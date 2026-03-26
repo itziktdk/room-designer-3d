@@ -136,7 +136,7 @@ input[type=file]{display:none}
           <span>מתקן סמית׳</span>
         </div>
         <div class="gym-card" onclick="addGymEquipment('pullup_bar')">
-          <img src="https://images.unsplash.com/photo-1598971639058-a5a0c60844c0?w=300&fit=crop" alt="Pull-up Bar" crossorigin="anonymous">
+          <img src="https://images.unsplash.com/photo-1571019614242-c5c5dee9f50b?w=300&fit=crop" alt="Pull-up Bar" crossorigin="anonymous">
           <span>מתקן מתח</span>
         </div>
         <div class="gym-card" onclick="addGymEquipment('exercise_ball')">
@@ -1237,7 +1237,7 @@ const gymBillboardInfo = {
   bike:           { w:110, h:130, name:'אופני כושר',      img:'https://images.unsplash.com/photo-1591291621164-2c6367723315?w=300&fit=crop' },
   cable_machine:  { w:120, h:210, name:'מתקן כבלים',     img:'https://images.unsplash.com/photo-1638536532686-d610adfc8e5c?w=300&fit=crop' },
   smith_machine:  { w:140, h:210, name:'מתקן סמית׳',     img:'https://images.unsplash.com/photo-1534367610401-9f5ed68180aa?w=300&fit=crop' },
-  pullup_bar:     { w:120, h:220, name:'מתקן מתח',       img:'https://images.unsplash.com/photo-1598971639058-a5a0c60844c0?w=300&fit=crop' },
+  pullup_bar:     { w:120, h:220, name:'מתקן מתח',       img:'https://images.unsplash.com/photo-1571019614242-c5c5dee9f50b?w=300&fit=crop' },
   exercise_ball:  { w:65,  h:65,  name:'כדור כושר',       img:'https://images.unsplash.com/photo-1544367567-0f2fcb009e0b?w=300&fit=crop' },
   yoga_mat:       { w:180, h:60,  name:'מזרון יוגה',      img:'https://images.unsplash.com/photo-1601925260368-ae2f83cf8b7f?w=300&fit=crop', flat:true }
 };
@@ -1246,27 +1246,71 @@ function createGymBillboard(type) {
   const info = gymBillboardInfo[type];
   if(!info) return null;
   const g = new THREE.Group();
-  const loader = new THREE.TextureLoader();
-  loader.crossOrigin = 'anonymous';
-  const texture = loader.load(info.img);
-  texture.encoding = THREE.sRGBEncoding;
-  const mat = new THREE.MeshBasicMaterial({ map: texture, transparent: true, side: THREE.DoubleSide });
-
+  
+  // Create a colored placeholder box first
+  var boxW = info.w, boxH = info.h, boxD = 10;
+  var placeholderColor = 0x445566;
+  
   if(info.flat) {
-    // Yoga mat: lay flat on the floor
-    const plane = new THREE.Mesh(new THREE.PlaneGeometry(info.w, info.h), mat);
-    plane.rotation.x = -Math.PI / 2;
-    plane.position.y = 0.5; // just above floor
-    plane.receiveShadow = true;
-    g.add(plane);
-    return { group: g, name: info.name, w: info.w, d: info.h, h: 2 };
+    // Yoga mat: flat on floor
+    var box = new THREE.Mesh(
+      new THREE.BoxGeometry(boxW, 2, info.h),
+      new THREE.MeshStandardMaterial({color: 0x6a0dad, roughness: 0.8})
+    );
+    box.position.y = 1;
+    box.receiveShadow = true;
+    box.castShadow = true;
+    g.add(box);
+    
+    // Try to load texture on top face
+    var loader = new THREE.TextureLoader();
+    loader.crossOrigin = 'anonymous';
+    loader.load(info.img, function(texture) {
+      texture.encoding = THREE.sRGBEncoding;
+      var topMat = new THREE.MeshBasicMaterial({map: texture});
+      var topPlane = new THREE.Mesh(new THREE.PlaneGeometry(boxW, info.h), topMat);
+      topPlane.rotation.x = -Math.PI/2;
+      topPlane.position.y = 2.5;
+      g.add(topPlane);
+    });
+    
+    return { group: g, name: info.name, w: boxW, d: info.h, h: 2 };
   } else {
-    // Vertical billboard
-    const plane = new THREE.Mesh(new THREE.PlaneGeometry(info.w, info.h), mat);
-    plane.position.y = info.h / 2; // bottom edge on floor
-    plane.castShadow = true;
-    g.add(plane);
-    return { group: g, name: info.name, w: info.w, d: 10, h: info.h };
+    // Vertical equipment: thin box with image on front and back
+    var box = new THREE.Mesh(
+      new THREE.BoxGeometry(boxW, boxH, boxD),
+      new THREE.MeshStandardMaterial({color: placeholderColor, roughness: 0.7})
+    );
+    box.position.y = boxH/2;
+    box.castShadow = true;
+    box.receiveShadow = true;
+    g.add(box);
+    
+    // Load texture and apply to front and back faces
+    var loader = new THREE.TextureLoader();
+    loader.crossOrigin = 'anonymous';
+    loader.load(info.img, function(texture) {
+      texture.encoding = THREE.sRGBEncoding;
+      // Front face
+      var frontPlane = new THREE.Mesh(
+        new THREE.PlaneGeometry(boxW, boxH),
+        new THREE.MeshBasicMaterial({map: texture, side: THREE.FrontSide})
+      );
+      frontPlane.position.set(0, boxH/2, boxD/2 + 0.5);
+      g.add(frontPlane);
+      // Back face
+      var backPlane = new THREE.Mesh(
+        new THREE.PlaneGeometry(boxW, boxH),
+        new THREE.MeshBasicMaterial({map: texture, side: THREE.FrontSide})
+      );
+      backPlane.position.set(0, boxH/2, -boxD/2 - 0.5);
+      backPlane.rotation.y = Math.PI;
+      g.add(backPlane);
+    }, undefined, function(err) {
+      console.error('Failed to load texture for ' + type, err);
+    });
+    
+    return { group: g, name: info.name, w: boxW, d: boxD, h: boxH };
   }
 }
 
