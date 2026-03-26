@@ -101,6 +101,21 @@ input[type=file]{display:none}
       <div id="openings-list"></div>
     </div>
     <div class="section">
+      <h3>🏋️ מתקני כושר</h3>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px" id="gym-catalog">
+        <button class="btn btn-secondary btn-small" onclick="addGymEquipment('treadmill')">🏃 הליכון</button>
+        <button class="btn btn-secondary btn-small" onclick="addGymEquipment('bench')">🪑 ספסל משקולות</button>
+        <button class="btn btn-secondary btn-small" onclick="addGymEquipment('squat_rack')">🏗️ סטנד משקולות</button>
+        <button class="btn btn-secondary btn-small" onclick="addGymEquipment('dumbbells')">💪 דמבלים</button>
+        <button class="btn btn-secondary btn-small" onclick="addGymEquipment('bike')">🚴 אופני כושר</button>
+        <button class="btn btn-secondary btn-small" onclick="addGymEquipment('cable_machine')">⚙️ מתקן כבלים</button>
+        <button class="btn btn-secondary btn-small" onclick="addGymEquipment('smith_machine')">🔧 מתקן סמית׳</button>
+        <button class="btn btn-secondary btn-small" onclick="addGymEquipment('pullup_bar')">🧗 מתקן משיכות</button>
+        <button class="btn btn-secondary btn-small" onclick="addGymEquipment('exercise_ball')">⚽ כדור כושר</button>
+        <button class="btn btn-secondary btn-small" onclick="addGymEquipment('yoga_mat')">🧘 מזרון יוגה</button>
+      </div>
+    </div>
+    <div class="section">
       <h3>🪑 פריטים</h3>
       <button class="btn btn-secondary" onclick="showAddItem()" style="margin-bottom:10px">➕ הוסף פריט</button>
       <div id="items-list"></div>
@@ -887,6 +902,439 @@ loadDesign = function(name) {
   });
   
   // Restore openings
+  (data.openings||[]).forEach(o => {
+    const opening = {type:o.type, wall:o.wall, width:o.width, height:o.height, position:o.position, heightFromFloor:o.heightFromFloor, color:o.color, group:null};
+    openings.push(opening);
+    buildOpening(opening);
+  });
+  
+  renderItemsList();
+  renderOpeningsList();
+  closeModal();
+};
+
+// ========== GYM EQUIPMENT ==========
+const metalMat = (c=0xcccccc) => new THREE.MeshStandardMaterial({color:c, metalness:0.8, roughness:0.2});
+const darkMetal = () => metalMat(0x444444);
+const padMat = (c=0x222222) => new THREE.MeshStandardMaterial({color:c, roughness:0.9});
+const rubberMat = (c=0x333333) => new THREE.MeshStandardMaterial({color:c, roughness:0.95});
+
+function setGroupShadows(group) {
+  group.traverse(child => {
+    if(child.isMesh) { child.castShadow = true; child.receiveShadow = true; }
+  });
+}
+
+function createTreadmill() {
+  const g = new THREE.Group();
+  // Base
+  g.add(Object.assign(new THREE.Mesh(new THREE.BoxGeometry(180,8,80), padMat(0x222222)), {position: new THREE.Vector3(0,4,0)}));
+  // Belt
+  g.add(Object.assign(new THREE.Mesh(new THREE.BoxGeometry(160,2,60), padMat(0x333333)), {position: new THREE.Vector3(0,9,0)}));
+  // Side rails (left/right)
+  [-35,35].forEach(zz => {
+    const rail = new THREE.Mesh(new THREE.CylinderGeometry(2,2,120,8), metalMat());
+    rail.position.set(70,68,zz); g.add(rail);
+  });
+  // Console
+  g.add(Object.assign(new THREE.Mesh(new THREE.BoxGeometry(30,20,50), padMat(0x111111)), {position: new THREE.Vector3(75,125,0)}));
+  // Console screen
+  g.add(Object.assign(new THREE.Mesh(new THREE.BoxGeometry(2,12,30), new THREE.MeshStandardMaterial({color:0x00aa44,emissive:0x004411,roughness:0.5})), {position: new THREE.Vector3(60,127,0)}));
+  // Top handlebar
+  const bar = new THREE.Mesh(new THREE.CylinderGeometry(1.5,1.5,56,8), metalMat());
+  bar.rotation.x = Math.PI/2; bar.position.set(70,135,0); g.add(bar);
+  // Front legs
+  [-35,35].forEach(zz => {
+    const leg = new THREE.Mesh(new THREE.CylinderGeometry(3,3,15,8), darkMetal());
+    leg.position.set(-85,7.5,zz); g.add(leg);
+  });
+  setGroupShadows(g);
+  return {group:g, name:'הליכון', w:180, d:80, h:140};
+}
+
+function createBench() {
+  const g = new THREE.Group();
+  // Legs (4 posts)
+  [[-45,-20],[-45,20],[45,-20],[45,20]].forEach(([xx,zz]) => {
+    g.add(Object.assign(new THREE.Mesh(new THREE.CylinderGeometry(2,2,35,8), metalMat(0x888888)), {position: new THREE.Vector3(xx,17.5,zz)}));
+  });
+  // Frame cross bars
+  g.add(Object.assign(new THREE.Mesh(new THREE.BoxGeometry(90,3,3), metalMat(0x888888)), {position: new THREE.Vector3(0,35,-20)}));
+  g.add(Object.assign(new THREE.Mesh(new THREE.BoxGeometry(90,3,3), metalMat(0x888888)), {position: new THREE.Vector3(0,35,20)}));
+  // Seat pad (flat part)
+  g.add(Object.assign(new THREE.Mesh(new THREE.BoxGeometry(70,6,45), padMat(0x1a1a1a)), {position: new THREE.Vector3(-10,39,0)}));
+  // Back pad (angled)
+  const back = new THREE.Mesh(new THREE.BoxGeometry(55,6,45), padMat(0x1a1a1a));
+  back.position.set(40,48,0); back.rotation.z = -0.3; g.add(back);
+  setGroupShadows(g);
+  return {group:g, name:'ספסל משקולות', w:130, d:55, h:50};
+}
+
+function createSquatRack() {
+  const g = new THREE.Group();
+  // 4 vertical posts
+  [[-55,-55],[-55,55],[55,-55],[55,55]].forEach(([xx,zz]) => {
+    g.add(Object.assign(new THREE.Mesh(new THREE.BoxGeometry(8,200,8), metalMat(0x666666)), {position: new THREE.Vector3(xx,100,zz)}));
+  });
+  // Top cross bars
+  [-55,55].forEach(zz => {
+    g.add(Object.assign(new THREE.Mesh(new THREE.BoxGeometry(118,5,5), metalMat(0x777777)), {position: new THREE.Vector3(0,197,zz)}));
+  });
+  // J-hooks
+  [-55,55].forEach(xx => {
+    const hook = new THREE.Mesh(new THREE.BoxGeometry(5,8,12), metalMat(0x999999));
+    hook.position.set(xx,130,-55); g.add(hook);
+  });
+  // Barbell
+  const bar = new THREE.Mesh(new THREE.CylinderGeometry(1.5,1.5,180,8), metalMat(0xcccccc));
+  bar.rotation.z = Math.PI/2; bar.position.set(0,134,-55); g.add(bar);
+  // Weight plates
+  [-80,80].forEach(xx => {
+    [0,5,-5].forEach(offset => {
+      const plate = new THREE.Mesh(new THREE.CylinderGeometry(18,18,3,16), darkMetal());
+      plate.rotation.z = Math.PI/2; plate.position.set(xx+offset,134,-55); g.add(plate);
+    });
+  });
+  // Safety bars
+  [-55,55].forEach(xx => {
+    const safety = new THREE.Mesh(new THREE.CylinderGeometry(1.5,1.5,110,8), metalMat(0xff4444));
+    safety.rotation.x = Math.PI/2; safety.position.set(xx,80,0); g.add(safety);
+  });
+  setGroupShadows(g);
+  return {group:g, name:'סטנד משקולות', w:120, d:120, h:200};
+}
+
+function createDumbbells() {
+  const g = new THREE.Group();
+  // Small rack
+  g.add(Object.assign(new THREE.Mesh(new THREE.BoxGeometry(40,4,20), metalMat(0x555555)), {position: new THREE.Vector3(0,2,0)}));
+  // 3 tiers of legs
+  [[-15,0],[15,0]].forEach(([xx,zz]) => {
+    g.add(Object.assign(new THREE.Mesh(new THREE.CylinderGeometry(1.5,1.5,20,8), metalMat(0x666666)), {position: new THREE.Vector3(xx,12,zz)}));
+  });
+  g.add(Object.assign(new THREE.Mesh(new THREE.BoxGeometry(40,3,20), metalMat(0x555555)), {position: new THREE.Vector3(0,22,0)}));
+  // Dumbbells on rack (3 pairs)
+  [-10,0,10].forEach((yy,i) => {
+    [-8,8].forEach(zz => {
+      const handle = new THREE.Mesh(new THREE.CylinderGeometry(1,1,14,8), metalMat(0xbbbbbb));
+      handle.rotation.x = Math.PI/2; handle.position.set(yy, i<2?5:25, zz); g.add(handle);
+      [-6,6].forEach(zo => {
+        const weight = new THREE.Mesh(new THREE.CylinderGeometry(3+i,3+i,2,8), darkMetal());
+        weight.rotation.x = Math.PI/2; weight.position.set(yy, i<2?5:25, zz+zo); g.add(weight);
+      });
+    });
+  });
+  setGroupShadows(g);
+  return {group:g, name:'דמבלים', w:40, d:20, h:25};
+}
+
+function createBike() {
+  const g = new THREE.Group();
+  // Main frame (angled tube)
+  const frame = new THREE.Mesh(new THREE.CylinderGeometry(2,2,80,8), metalMat(0x333333));
+  frame.rotation.z = 0.3; frame.position.set(0,50,0); g.add(frame);
+  // Seat post
+  const seatPost = new THREE.Mesh(new THREE.CylinderGeometry(1.5,1.5,40,8), metalMat(0x555555));
+  seatPost.position.set(-20,85,0); g.add(seatPost);
+  // Seat
+  g.add(Object.assign(new THREE.Mesh(new THREE.BoxGeometry(20,4,18), padMat(0x111111)), {position: new THREE.Vector3(-20,107,0)}));
+  // Handlebar post
+  const hPost = new THREE.Mesh(new THREE.CylinderGeometry(1.5,1.5,50,8), metalMat(0x555555));
+  hPost.position.set(30,95,0); g.add(hPost);
+  // Handlebars
+  const hbar = new THREE.Mesh(new THREE.CylinderGeometry(1.5,1.5,40,8), metalMat(0xaaaaaa));
+  hbar.rotation.x = Math.PI/2; hbar.position.set(35,118,0); g.add(hbar);
+  // Grip ends
+  [-18,18].forEach(zz => {
+    g.add(Object.assign(new THREE.Mesh(new THREE.CylinderGeometry(2,2,8,8), rubberMat()), {position: new THREE.Vector3(35,118,zz)}));
+  });
+  // Flywheel
+  const wheel = new THREE.Mesh(new THREE.CylinderGeometry(20,20,4,24), metalMat(0x888888));
+  wheel.rotation.x = Math.PI/2; wheel.position.set(35,25,0); g.add(wheel);
+  // Flywheel inner
+  const wheelInner = new THREE.Mesh(new THREE.CylinderGeometry(15,15,5,24), darkMetal());
+  wheelInner.rotation.x = Math.PI/2; wheelInner.position.set(35,25,0); g.add(wheelInner);
+  // Pedals
+  [-12,12].forEach(zz => {
+    g.add(Object.assign(new THREE.Mesh(new THREE.BoxGeometry(10,3,6), metalMat(0x777777)), {position: new THREE.Vector3(0,25,zz)}));
+  });
+  // Base
+  g.add(Object.assign(new THREE.Mesh(new THREE.BoxGeometry(100,4,40), metalMat(0x444444)), {position: new THREE.Vector3(5,2,0)}));
+  // Console
+  g.add(Object.assign(new THREE.Mesh(new THREE.BoxGeometry(15,12,18), padMat(0x111111)), {position: new THREE.Vector3(38,128,0)}));
+  setGroupShadows(g);
+  return {group:g, name:'אופני כושר', w:110, d:55, h:130};
+}
+
+function createCableMachine() {
+  const g = new THREE.Group();
+  // Main frame - 4 posts
+  [[-55,-35],[-55,35],[55,-35],[55,35]].forEach(([xx,zz]) => {
+    g.add(Object.assign(new THREE.Mesh(new THREE.BoxGeometry(6,210,6), metalMat(0x555555)), {position: new THREE.Vector3(xx,105,zz)}));
+  });
+  // Top bar
+  g.add(Object.assign(new THREE.Mesh(new THREE.BoxGeometry(116,5,76), metalMat(0x666666)), {position: new THREE.Vector3(0,207,0)}));
+  // Pulleys at top
+  [-40,40].forEach(xx => {
+    const pulley = new THREE.Mesh(new THREE.CylinderGeometry(4,4,3,12), metalMat(0xaaaaaa));
+    pulley.rotation.x = Math.PI/2; pulley.position.set(xx,200,0); g.add(pulley);
+  });
+  // Weight stack (back)
+  for(let i=0;i<12;i++) {
+    g.add(Object.assign(new THREE.Mesh(new THREE.BoxGeometry(40,6,25), metalMat(0x333333)), {position: new THREE.Vector3(0,10+i*8,30)}));
+  }
+  // Weight pin
+  g.add(Object.assign(new THREE.Mesh(new THREE.CylinderGeometry(1,1,30,6), metalMat(0xff3333)), {position: new THREE.Vector3(-25,50,30)}));
+  // Cables (thin cylinders)
+  [-40,40].forEach(xx => {
+    const cable = new THREE.Mesh(new THREE.CylinderGeometry(0.5,0.5,160,4), metalMat(0x999999));
+    cable.position.set(xx,120,0); g.add(cable);
+  });
+  // Handle bar at bottom
+  const handle = new THREE.Mesh(new THREE.CylinderGeometry(1.5,1.5,50,8), metalMat(0xbbbbbb));
+  handle.rotation.z = Math.PI/2; handle.position.set(0,40,0); g.add(handle);
+  setGroupShadows(g);
+  return {group:g, name:'מתקן כבלים', w:120, d:80, h:210};
+}
+
+function createSmithMachine() {
+  const g = new THREE.Group();
+  // Base plate
+  g.add(Object.assign(new THREE.Mesh(new THREE.BoxGeometry(140,4,120), metalMat(0x444444)), {position: new THREE.Vector3(0,2,0)}));
+  // 2 vertical rails
+  [-55,55].forEach(zz => {
+    g.add(Object.assign(new THREE.Mesh(new THREE.BoxGeometry(6,210,6), metalMat(0x777777)), {position: new THREE.Vector3(0,105,zz)}));
+    // Guide rail groove
+    g.add(Object.assign(new THREE.Mesh(new THREE.BoxGeometry(2,200,2), metalMat(0xaaaaaa)), {position: new THREE.Vector3(3,105,zz)}));
+  });
+  // Top connecting bar
+  g.add(Object.assign(new THREE.Mesh(new THREE.BoxGeometry(8,5,116), metalMat(0x666666)), {position: new THREE.Vector3(0,207,0)}));
+  // Barbell on rails
+  const bar = new THREE.Mesh(new THREE.CylinderGeometry(1.5,1.5,130,8), metalMat(0xcccccc));
+  bar.rotation.x = Math.PI/2; bar.position.set(0,120,0); g.add(bar);
+  // Weight plates
+  [-60,60].forEach(zz => {
+    [0,4,-4].forEach(off => {
+      const plate = new THREE.Mesh(new THREE.CylinderGeometry(16,16,3,16), darkMetal());
+      plate.rotation.x = Math.PI/2; plate.position.set(0,120,zz+off); g.add(plate);
+    });
+  });
+  // Safety stops
+  [-55,55].forEach(zz => {
+    g.add(Object.assign(new THREE.Mesh(new THREE.BoxGeometry(12,4,8), metalMat(0xff4444)), {position: new THREE.Vector3(0,80,zz)}));
+  });
+  setGroupShadows(g);
+  return {group:g, name:'מתקן סמית׳', w:140, d:120, h:210};
+}
+
+function createPullupBar() {
+  const g = new THREE.Group();
+  // 2 main vertical posts
+  [-50,50].forEach(zz => {
+    g.add(Object.assign(new THREE.Mesh(new THREE.BoxGeometry(8,220,8), metalMat(0x555555)), {position: new THREE.Vector3(0,110,zz)}));
+  });
+  // Top pull-up bar
+  const topBar = new THREE.Mesh(new THREE.CylinderGeometry(2,2,108,8), metalMat(0xcccccc));
+  topBar.rotation.x = Math.PI/2; topBar.position.set(0,215,0); g.add(topBar);
+  // Wide grip extensions
+  [-55,55].forEach(zz => {
+    const ext = new THREE.Mesh(new THREE.CylinderGeometry(1.5,1.5,20,8), metalMat(0xcccccc));
+    ext.position.set(-10,205,zz); ext.rotation.z = 0.5; g.add(ext);
+  });
+  // Grip pads
+  [-55,55].forEach(zz => {
+    g.add(Object.assign(new THREE.Mesh(new THREE.CylinderGeometry(2.5,2.5,12,8), rubberMat(0x222222)), {position: new THREE.Vector3(0,215,zz)}));
+  });
+  // Base stabilizers
+  [-50,50].forEach(zz => {
+    g.add(Object.assign(new THREE.Mesh(new THREE.BoxGeometry(60,4,8), metalMat(0x444444)), {position: new THREE.Vector3(0,2,zz)}));
+  });
+  // Back pad for knee raises
+  g.add(Object.assign(new THREE.Mesh(new THREE.BoxGeometry(6,40,30), padMat(0x1a1a1a)), {position: new THREE.Vector3(8,120,0)}));
+  // Arm rests
+  [-35,35].forEach(zz => {
+    g.add(Object.assign(new THREE.Mesh(new THREE.BoxGeometry(25,5,10), padMat(0x1a1a1a)), {position: new THREE.Vector3(-5,155,zz)}));
+  });
+  setGroupShadows(g);
+  return {group:g, name:'מתקן משיכות', w:120, d:110, h:220};
+}
+
+function createExerciseBall() {
+  const g = new THREE.Group();
+  const ball = new THREE.Mesh(new THREE.SphereGeometry(32.5,24,24), new THREE.MeshStandardMaterial({color:0x2299ee, roughness:0.6}));
+  ball.position.y = 32.5; g.add(ball);
+  // Subtle ring detail
+  const ring = new THREE.Mesh(new THREE.TorusGeometry(32.5,0.5,8,32), new THREE.MeshStandardMaterial({color:0x1188cc, roughness:0.7}));
+  ring.position.y = 32.5; ring.rotation.x = Math.PI/2; g.add(ring);
+  setGroupShadows(g);
+  return {group:g, name:'כדור כושר', w:65, d:65, h:65};
+}
+
+function createYogaMat() {
+  const g = new THREE.Group();
+  const mat = new THREE.Mesh(new THREE.BoxGeometry(180,2,60), new THREE.MeshStandardMaterial({color:0x7733aa, roughness:0.9}));
+  mat.position.y = 1; g.add(mat);
+  // Rolled end hint
+  const roll = new THREE.Mesh(new THREE.CylinderGeometry(3,3,60,12), new THREE.MeshStandardMaterial({color:0x6622aa, roughness:0.85}));
+  roll.rotation.x = Math.PI/2; roll.position.set(88,3,0); g.add(roll);
+  setGroupShadows(g);
+  return {group:g, name:'מזרון יוגה', w:180, d:60, h:2};
+}
+
+const gymEquipmentCreators = {
+  treadmill: createTreadmill,
+  bench: createBench,
+  squat_rack: createSquatRack,
+  dumbbells: createDumbbells,
+  bike: createBike,
+  cable_machine: createCableMachine,
+  smith_machine: createSmithMachine,
+  pullup_bar: createPullupBar,
+  exercise_ball: createExerciseBall,
+  yoga_mat: createYogaMat
+};
+
+function addGymEquipment(type) {
+  const creator = gymEquipmentCreators[type];
+  if(!creator) return;
+  const {group, name, w, d, h} = creator();
+  group.position.set(roomDims.x/2, 0, roomDims.z/2);
+  itemsGroup.add(group);
+  
+  // Label
+  const label = makeTextSprite(name, 0xffffff);
+  label.position.set(0, h+15, 0);
+  label.scale.set(Math.max(w,60), Math.max(w,60)/2, 1);
+  group.add(label);
+  
+  const item = {mesh:group, name, w, d, h, imageData:null, rotY:0, equipmentType:type};
+  items.push(item);
+  renderItemsList();
+}
+
+// ========== PATCH: Support Group dragging/selection ==========
+// Override onCanvasDown to raycast into groups
+const _origOnCanvasDown = onCanvasDown;
+canvas.removeEventListener('pointerdown', onCanvasDown);
+
+onCanvasDown = function(e) {
+  if(e.button === 2) return;
+  pointerDownPos.set(e.clientX, e.clientY);
+  pointerMoved = false;
+  
+  const rect = canvas.getBoundingClientRect();
+  mouse.x = ((e.clientX - rect.left)/rect.width)*2-1;
+  mouse.y = -((e.clientY - rect.top)/rect.height)*2+1;
+  raycaster.setFromCamera(mouse, camera);
+
+  // Check all item children (supports both Mesh items and Group items)
+  const allMeshes = [];
+  const meshToItem = new Map();
+  items.forEach(item => {
+    if(item.mesh.isGroup) {
+      item.mesh.traverse(child => { if(child.isMesh) { allMeshes.push(child); meshToItem.set(child, item); }});
+    } else {
+      allMeshes.push(item.mesh); meshToItem.set(item.mesh, item);
+    }
+  });
+  
+  const hits = raycaster.intersectObjects(allMeshes);
+  if(hits.length > 0) {
+    const hitItem = meshToItem.get(hits[0].object);
+    if(hitItem) {
+      dragItem = hitItem;
+      controls.enabled = false;
+      isDragging = true;
+      dragPlane.set(new THREE.Vector3(0,1,0), -hitItem.mesh.position.y);
+      const pt = new THREE.Vector3();
+      raycaster.ray.intersectPlane(dragPlane, pt);
+      dragOffset.copy(hitItem.mesh.position).sub(pt);
+      selectItem(hitItem);
+    }
+    return;
+  }
+};
+canvas.addEventListener('pointerdown', onCanvasDown);
+
+// Patch selectItem/deselectItem for groups
+const _origSelectItem = selectItem;
+selectItem = function(item) {
+  deselectItem();
+  selectedItem = item;
+  item.mesh.traverse ? item.mesh.traverse(c => { if(c.isMesh && c.material && c.material.emissive) c.material.emissive.set(0x331111); }) : (item.mesh.material && item.mesh.material.emissive && item.mesh.material.emissive.set(0x331111));
+  renderItemsList();
+};
+const _origDeselectItem = deselectItem;
+deselectItem = function() {
+  if(selectedItem) {
+    const m = selectedItem.mesh;
+    if(m.traverse) m.traverse(c => { if(c.isMesh && c.material && c.material.emissive) c.material.emissive.set(0); });
+    else if(m.material) { if(Array.isArray(m.material)) m.material.forEach(mt=>mt.emissive&&mt.emissive.set(0)); else if(m.material.emissive) m.material.emissive.set(0); }
+  }
+  selectedItem = null;
+  renderItemsList();
+};
+
+// Patch save/load for equipment
+const _patchedSaveDesign = saveDesign;
+saveDesign = function() {
+  const name = document.getElementById('save-name').value.trim();
+  if(!name) { alert('נא להזין שם לעיצוב'); return; }
+  const data = {
+    roomDims: {...roomDims},
+    surfaces: {},
+    items: items.map(i => ({name:i.name, w:i.w, d:i.d, h:i.h, imageData:i.imageData||null, px:i.mesh.position.x, pz:i.mesh.position.z, rotY:i.rotY, equipmentType:i.equipmentType||null})),
+    openings: openings.map(o => ({type:o.type, wall:o.wall, width:o.width, height:o.height, position:o.position, heightFromFloor:o.heightFromFloor, color:o.color})),
+    timestamp: Date.now()
+  };
+  for(const [k,v] of Object.entries(surfaces)) {
+    data.surfaces[k] = '#'+v.material.color.getHexString();
+  }
+  const saves = JSON.parse(localStorage.getItem('roomDesigns')||'{}');
+  saves[name] = data;
+  localStorage.setItem('roomDesigns', JSON.stringify(saves));
+  document.getElementById('save-name').value = '';
+  alert('נשמר בהצלחה! ✅');
+};
+
+const _patchedLoadDesign = loadDesign;
+loadDesign = function(name) {
+  const saves = JSON.parse(localStorage.getItem('roomDesigns')||'{}');
+  const data = saves[name];
+  if(!data) return;
+  
+  document.getElementById('roomX').value = data.roomDims.x;
+  document.getElementById('roomZ').value = data.roomDims.z;
+  document.getElementById('roomY').value = data.roomDims.y;
+  
+  while(itemsGroup.children.length) itemsGroup.remove(itemsGroup.children[0]);
+  items = []; selectedItem = null;
+  openings.forEach(o => { if(o.group) roomGroup.remove(o.group); });
+  openings = [];
+  
+  buildRoom();
+  
+  for(const [k,v] of Object.entries(data.surfaces||{})) {
+    if(surfaces[k]) surfaces[k].material.color.set(v);
+  }
+  
+  (data.items||[]).forEach(i => {
+    if(i.equipmentType && gymEquipmentCreators[i.equipmentType]) {
+      // Recreate gym equipment
+      const {group, name:eName, w, d, h} = gymEquipmentCreators[i.equipmentType]();
+      group.position.set(i.px, 0, i.pz);
+      group.rotation.y = i.rotY || 0;
+      itemsGroup.add(group);
+      const label = makeTextSprite(eName, 0xffffff);
+      label.position.set(0, h+15, 0);
+      label.scale.set(Math.max(w,60), Math.max(w,60)/2, 1);
+      group.add(label);
+      items.push({mesh:group, name:eName, w, d, h, imageData:null, rotY:i.rotY||0, equipmentType:i.equipmentType});
+    } else {
+      createItemMesh(i.name, i.w, i.d, i.h, i.imageData, i.px, i.pz, i.rotY);
+    }
+  });
+  
   (data.openings||[]).forEach(o => {
     const opening = {type:o.type, wall:o.wall, width:o.width, height:o.height, position:o.position, heightFromFloor:o.heightFromFloor, color:o.color, group:null};
     openings.push(opening);
