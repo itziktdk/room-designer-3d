@@ -712,17 +712,22 @@ function addDoor() {
 }
 
 function addWindow() {
-  const wall = document.getElementById('op-wall').value;
-  const w = +document.getElementById('op-w').value || 120;
-  const h = +document.getElementById('op-h').value || 100;
-  const pos = +document.getElementById('op-pos').value || 100;
-  const floorH = +document.getElementById('op-floor').value || 90;
-  const color = document.getElementById('op-color').value;
-  const opening = {type:'window', wall, width:w, height:h, position:pos, heightFromFloor:floorH, color, group:null};
-  openings.push(opening);
-  buildOpening(opening);
-  renderOpeningsList();
-  closeModal();
+  try {
+    var wall = document.getElementById('op-wall').value;
+    var w = parseInt(document.getElementById('op-w').value) || 120;
+    var h = parseInt(document.getElementById('op-h').value) || 100;
+    var pos = parseInt(document.getElementById('op-pos').value) || 100;
+    var floorH = parseInt(document.getElementById('op-floor').value) || 90;
+    var color = document.getElementById('op-color').value || '#f0f0f0';
+    var opening = {type:'window', wall:wall, width:w, height:h, position:pos, heightFromFloor:floorH, color:color, group:null};
+    openings.push(opening);
+    buildOpening(opening);
+    renderOpeningsList();
+    closeModal();
+  } catch(err) {
+    alert('שגיאה: ' + err.message);
+    console.error('addWindow error:', err);
+  }
 }
 
 function buildOpening(op) {
@@ -791,17 +796,17 @@ function buildOpening(op) {
   }
 
   // Position group on the correct wall
-  const offset = 1.5; // slight offset from wall to avoid z-fighting
+  var wallOffset = 1.5; // slight offset from wall to avoid z-fighting
   if(op.wall === 'wallBack') {
-    group.position.set(centerAlongWall, op.heightFromFloor, offset);
+    group.position.set(centerAlongWall, op.heightFromFloor, wallOffset);
   } else if(op.wall === 'wallFront') {
-    group.position.set(x - centerAlongWall, op.heightFromFloor, z - offset);
+    group.position.set(x - centerAlongWall, op.heightFromFloor, z - wallOffset);
     group.rotation.y = Math.PI;
   } else if(op.wall === 'wallLeft') {
-    group.position.set(offset, op.heightFromFloor, z - centerAlongWall);
+    group.position.set(wallOffset, op.heightFromFloor, z - centerAlongWall);
     group.rotation.y = Math.PI/2;
   } else if(op.wall === 'wallRight') {
-    group.position.set(x - offset, op.heightFromFloor, centerAlongWall);
+    group.position.set(x - wallOffset, op.heightFromFloor, centerAlongWall);
     group.rotation.y = -Math.PI/2;
   }
 
