@@ -51,6 +51,7 @@ input[type=file]{display:none}
 .upload-zone{border:2px dashed var(--border);border-radius:var(--radius);padding:20px;text-align:center;cursor:pointer;margin-bottom:10px;transition:border-color .2s}
 .upload-zone:hover{border-color:var(--highlight)}
 .upload-zone img{max-width:100%;max-height:80px;margin-top:8px;border-radius:4px}
+.wall-toggle{transition:all .2s}.wall-toggle.active{background:var(--accent)}
 @media(max-width:768px){
   #sidebar{position:fixed;right:0;top:0;bottom:0;width:85%;max-width:320px;z-index:20}
   #sidebar.hidden{transform:translateX(100%)}
@@ -83,6 +84,23 @@ input[type=file]{display:none}
         <div><label>גובה (Y)</label><input type="number" id="roomY" value="260" min="100" max="500"></div>
       </div>
       <button class="btn btn-primary" onclick="buildRoom()">🔨 בנה חדר</button>
+    </div>
+    <div class="section">
+      <h3>👁️ קירות</h3>
+      <div class="row" style="flex-wrap:wrap;gap:6px">
+        <button class="btn btn-small btn-secondary wall-toggle active" id="tog-wallFront" onclick="toggleWall('wallFront',this)" style="flex:1;min-width:70px">קדמי ✓</button>
+        <button class="btn btn-small btn-secondary wall-toggle active" id="tog-wallBack" onclick="toggleWall('wallBack',this)" style="flex:1;min-width:70px">אחורי ✓</button>
+        <button class="btn btn-small btn-secondary wall-toggle active" id="tog-wallLeft" onclick="toggleWall('wallLeft',this)" style="flex:1;min-width:70px">שמאל ✓</button>
+        <button class="btn btn-small btn-secondary wall-toggle active" id="tog-wallRight" onclick="toggleWall('wallRight',this)" style="flex:1;min-width:70px">ימין ✓</button>
+      </div>
+    </div>
+    <div class="section">
+      <h3>🚪🪟 דלתות וחלונות</h3>
+      <div class="row">
+        <div><button class="btn btn-secondary" onclick="showAddDoor()">🚪 הוסף דלת</button></div>
+        <div><button class="btn btn-secondary" onclick="showAddWindow()">🪟 הוסף חלון</button></div>
+      </div>
+      <div id="openings-list"></div>
     </div>
     <div class="section">
       <h3>🪑 פריטים</h3>
@@ -250,6 +268,11 @@ function buildRoom() {
 
   // Grid
   buildGrid();
+
+  // Rebuild openings
+  if(typeof openings !== 'undefined') {
+    openings.forEach(op => { op.group = null; buildOpening(op); });
+  }
 
   // Camera
   resetCamera();
@@ -601,9 +624,275 @@ function closeModal() {
   pendingImageData = null;
 }
 
+// ========== WALL TOGGLES ==========
+let wallVisibility = {wallFront:true, wallBack:true, wallLeft:true, wallRight:true};
+
+function toggleWall(wallKey, btn) {
+  wallVisibility[wallKey] = !wallVisibility[wallKey];
+  const wall = surfaces[wallKey];
+  if(wall) {
+    if(wallVisibility[wallKey]) {
+      wall.material.transparent = false;
+      wall.material.opacity = 1;
+      wall.visible = true;
+    } else {
+      wall.material.transparent = true;
+      wall.material.opacity = 0.08;
+    }
+  }
+  // Also toggle openings on this wall
+  openings.forEach(o => {
+    if(o.wall === wallKey && o.group) {
+      o.group.visible = wallVisibility[wallKey];
+    }
+  });
+  btn.textContent = btn.textContent.replace(/ ✓$/, '') + (wallVisibility[wallKey] ? ' ✓' : '');
+}
+
+// ========== DOORS & WINDOWS ==========
+let openings = []; // {type:'door'|'window', wall, width, height, position, heightFromFloor, color, group}
+
+const wallNames = {wallFront:'קיר קדמי', wallBack:'קיר אחורי', wallLeft:'קיר שמאל', wallRight:'קיר ימין'};
+
+function getWallLength(wallKey) {
+  if(wallKey==='wallFront'||wallKey==='wallBack') return roomDims.x;
+  return roomDims.z;
+}
+
+function showAddDoor() {
+  const mc = document.getElementById('modal-content');
+  mc.innerHTML = `
+    <h3>🚪 הוסף דלת</h3>
+    <div><label>קיר</label><select id="op-wall">
+      <option value="wallFront">קיר קדמי</option><option value="wallBack">קיר אחורי</option>
+      <option value="wallLeft">קיר שמאל</option><option value="wallRight">קיר ימין</option>
+    </select></div>
+    <div class="row" style="margin-top:8px">
+      <div><label>רוחב (ס"מ)</label><input type="number" id="op-w" value="90" min="30" max="300"></div>
+      <div><label>גובה (ס"מ)</label><input type="number" id="op-h" value="210" min="50" max="300"></div>
+    </div>
+    <div style="margin-top:8px"><label>מיקום לאורך הקיר (ס"מ מהקצה השמאלי)</label><input type="number" id="op-pos" value="100" min="0"></div>
+    <div style="margin-top:8px"><label>צבע דלת</label><input type="color" id="op-color" value="#5c3a1e"></div>
+    <button class="btn btn-primary" style="margin-top:12px" onclick="addDoor()">הוסף דלת</button>
+    <button class="btn btn-secondary" style="margin-top:6px" onclick="closeModal()">ביטול</button>
+  `;
+  document.getElementById('modal-overlay').classList.add('show');
+}
+
+function showAddWindow() {
+  const mc = document.getElementById('modal-content');
+  mc.innerHTML = `
+    <h3>🪟 הוסף חלון</h3>
+    <div><label>קיר</label><select id="op-wall">
+      <option value="wallFront">קיר קדמי</option><option value="wallBack">קיר אחורי</option>
+      <option value="wallLeft">קיר שמאל</option><option value="wallRight">קיר ימין</option>
+    </select></div>
+    <div class="row" style="margin-top:8px">
+      <div><label>רוחב (ס"מ)</label><input type="number" id="op-w" value="120" min="20" max="400"></div>
+      <div><label>גובה (ס"מ)</label><input type="number" id="op-h" value="100" min="20" max="300"></div>
+    </div>
+    <div style="margin-top:8px"><label>גובה מהרצפה (ס"מ)</label><input type="number" id="op-floor" value="90" min="0"></div>
+    <div style="margin-top:8px"><label>מיקום לאורך הקיר (ס"מ מהקצה השמאלי)</label><input type="number" id="op-pos" value="100" min="0"></div>
+    <div style="margin-top:8px"><label>צבע מסגרת</label><input type="color" id="op-color" value="#f0f0f0"></div>
+    <button class="btn btn-primary" style="margin-top:12px" onclick="addWindow()">הוסף חלון</button>
+    <button class="btn btn-secondary" style="margin-top:6px" onclick="closeModal()">ביטול</button>
+  `;
+  document.getElementById('modal-overlay').classList.add('show');
+}
+
+function addDoor() {
+  const wall = document.getElementById('op-wall').value;
+  const w = +document.getElementById('op-w').value || 90;
+  const h = +document.getElementById('op-h').value || 210;
+  const pos = +document.getElementById('op-pos').value || 100;
+  const color = document.getElementById('op-color').value;
+  const opening = {type:'door', wall, width:w, height:h, position:pos, heightFromFloor:0, color, group:null};
+  openings.push(opening);
+  buildOpening(opening);
+  renderOpeningsList();
+  closeModal();
+}
+
+function addWindow() {
+  const wall = document.getElementById('op-wall').value;
+  const w = +document.getElementById('op-w').value || 120;
+  const h = +document.getElementById('op-h').value || 100;
+  const pos = +document.getElementById('op-pos').value || 100;
+  const floorH = +document.getElementById('op-floor').value || 90;
+  const color = document.getElementById('op-color').value;
+  const opening = {type:'window', wall, width:w, height:h, position:pos, heightFromFloor:floorH, color, group:null};
+  openings.push(opening);
+  buildOpening(opening);
+  renderOpeningsList();
+  closeModal();
+}
+
+function buildOpening(op) {
+  if(op.group) { roomGroup.remove(op.group); }
+  const group = new THREE.Group();
+  const {x, y, z} = roomDims;
+  const wallLen = getWallLength(op.wall);
+  const frameThick = 5;
+  const depth = 3; // how far it protrudes from wall
+
+  // Calculate center position along wall
+  const centerAlongWall = op.position + op.width/2;
+  const centerY = op.heightFromFloor + op.height/2;
+
+  if(op.type === 'door') {
+    // Dark opening
+    const openingMat = new THREE.MeshStandardMaterial({color:0x111111, roughness:1});
+    const openingMesh = new THREE.Mesh(new THREE.BoxGeometry(op.width-frameThick*2, op.height-frameThick, depth), openingMat);
+    openingMesh.position.y = op.height/2;
+    group.add(openingMesh);
+    
+    // Door panel (slightly recessed)
+    const doorMat = new THREE.MeshStandardMaterial({color:op.color, roughness:0.5});
+    const doorPanel = new THREE.Mesh(new THREE.BoxGeometry(op.width-frameThick*2-4, op.height-frameThick-4, 2), doorMat);
+    doorPanel.position.y = op.height/2;
+    doorPanel.position.z = -1;
+    group.add(doorPanel);
+
+    // Frame pieces
+    const frameMat = new THREE.MeshStandardMaterial({color:0xdcc8a0, roughness:0.4});
+    // Top
+    const top = new THREE.Mesh(new THREE.BoxGeometry(op.width, frameThick, depth+2), frameMat);
+    top.position.y = op.height; group.add(top);
+    // Left
+    const left = new THREE.Mesh(new THREE.BoxGeometry(frameThick, op.height, depth+2), frameMat);
+    left.position.set(-op.width/2+frameThick/2, op.height/2, 0); group.add(left);
+    // Right
+    const right = new THREE.Mesh(new THREE.BoxGeometry(frameThick, op.height, depth+2), frameMat);
+    right.position.set(op.width/2-frameThick/2, op.height/2, 0); group.add(right);
+  } else {
+    // Window: light blue transparent glass
+    const glassMat = new THREE.MeshStandardMaterial({color:0x87ceeb, transparent:true, opacity:0.35, roughness:0.1, side:THREE.DoubleSide});
+    const glass = new THREE.Mesh(new THREE.BoxGeometry(op.width-8, op.height-8, 1), glassMat);
+    glass.position.y = op.height/2;
+    group.add(glass);
+
+    // Frame
+    const frameMat = new THREE.MeshStandardMaterial({color:op.color, roughness:0.3});
+    // Top
+    group.add(Object.assign(new THREE.Mesh(new THREE.BoxGeometry(op.width, 4, depth+2), frameMat), {position: new THREE.Vector3(0, op.height, 0)}));
+    // Bottom
+    group.add(Object.assign(new THREE.Mesh(new THREE.BoxGeometry(op.width, 4, depth+2), frameMat), {position: new THREE.Vector3(0, 0, 0)}));
+    // Left
+    group.add(Object.assign(new THREE.Mesh(new THREE.BoxGeometry(4, op.height, depth+2), frameMat), {position: new THREE.Vector3(-op.width/2+2, op.height/2, 0)}));
+    // Right
+    group.add(Object.assign(new THREE.Mesh(new THREE.BoxGeometry(4, op.height, depth+2), frameMat), {position: new THREE.Vector3(op.width/2-2, op.height/2, 0)}));
+    // Cross bars
+    group.add(Object.assign(new THREE.Mesh(new THREE.BoxGeometry(op.width-8, 3, 2), frameMat), {position: new THREE.Vector3(0, op.height/2, 0)}));
+    group.add(Object.assign(new THREE.Mesh(new THREE.BoxGeometry(3, op.height-8, 2), frameMat), {position: new THREE.Vector3(0, op.height/2, 0)}));
+  }
+
+  // Position group on the correct wall
+  const offset = 1.5; // slight offset from wall to avoid z-fighting
+  if(op.wall === 'wallBack') {
+    group.position.set(centerAlongWall, op.heightFromFloor, offset);
+  } else if(op.wall === 'wallFront') {
+    group.position.set(x - centerAlongWall, op.heightFromFloor, z - offset);
+    group.rotation.y = Math.PI;
+  } else if(op.wall === 'wallLeft') {
+    group.position.set(offset, op.heightFromFloor, z - centerAlongWall);
+    group.rotation.y = Math.PI/2;
+  } else if(op.wall === 'wallRight') {
+    group.position.set(x - offset, op.heightFromFloor, centerAlongWall);
+    group.rotation.y = -Math.PI/2;
+  }
+
+  group.visible = wallVisibility[op.wall];
+  roomGroup.add(group);
+  op.group = group;
+}
+
+function deleteOpening(idx) {
+  const op = openings[idx];
+  if(op && op.group) roomGroup.remove(op.group);
+  openings.splice(idx, 1);
+  renderOpeningsList();
+}
+
+function renderOpeningsList() {
+  const el = document.getElementById('openings-list');
+  if(openings.length === 0) { el.innerHTML = '<div style="color:var(--text2);font-size:11px;text-align:center;padding:6px">אין דלתות או חלונות</div>'; return; }
+  el.innerHTML = openings.map((op, i) => `
+    <div class="item-card">
+      <div class="name">${op.type==='door'?'🚪 דלת':'🪟 חלון'} - ${wallNames[op.wall]}</div>
+      <div class="dims">${op.width}×${op.height} ס"מ | מיקום: ${op.position}</div>
+      <div class="actions"><button class="btn btn-small btn-danger" onclick="deleteOpening(${i})">🗑</button></div>
+    </div>
+  `).join('');
+}
+
+// ========== SAVE/LOAD with openings ==========
+const _origSaveDesign = saveDesign;
+saveDesign = function() {
+  const name = document.getElementById('save-name').value.trim();
+  if(!name) { alert('נא להזין שם לעיצוב'); return; }
+  const data = {
+    roomDims: {...roomDims},
+    surfaces: {},
+    items: items.map(i => ({name:i.name, w:i.w, d:i.d, h:i.h, imageData:i.imageData||null, px:i.mesh.position.x, pz:i.mesh.position.z, rotY:i.rotY})),
+    openings: openings.map(o => ({type:o.type, wall:o.wall, width:o.width, height:o.height, position:o.position, heightFromFloor:o.heightFromFloor, color:o.color})),
+    timestamp: Date.now()
+  };
+  for(const [k,v] of Object.entries(surfaces)) {
+    data.surfaces[k] = '#'+v.material.color.getHexString();
+  }
+  const saves = JSON.parse(localStorage.getItem('roomDesigns')||'{}');
+  saves[name] = data;
+  localStorage.setItem('roomDesigns', JSON.stringify(saves));
+  document.getElementById('save-name').value = '';
+  alert('נשמר בהצלחה! ✅');
+};
+
+const _origLoadDesign = loadDesign;
+loadDesign = function(name) {
+  const saves = JSON.parse(localStorage.getItem('roomDesigns')||'{}');
+  const data = saves[name];
+  if(!data) return;
+  
+  document.getElementById('roomX').value = data.roomDims.x;
+  document.getElementById('roomZ').value = data.roomDims.z;
+  document.getElementById('roomY').value = data.roomDims.y;
+  
+  // Clear items
+  while(itemsGroup.children.length) itemsGroup.remove(itemsGroup.children[0]);
+  items = []; selectedItem = null;
+  
+  // Clear openings
+  openings.forEach(o => { if(o.group) roomGroup.remove(o.group); });
+  openings = [];
+  
+  buildRoom();
+  
+  // Restore colors
+  for(const [k,v] of Object.entries(data.surfaces||{})) {
+    if(surfaces[k]) surfaces[k].material.color.set(v);
+  }
+  
+  // Restore items
+  (data.items||[]).forEach(i => {
+    createItemMesh(i.name, i.w, i.d, i.h, i.imageData, i.px, i.pz, i.rotY);
+  });
+  
+  // Restore openings
+  (data.openings||[]).forEach(o => {
+    const opening = {type:o.type, wall:o.wall, width:o.width, height:o.height, position:o.position, heightFromFloor:o.heightFromFloor, color:o.color, group:null};
+    openings.push(opening);
+    buildOpening(opening);
+  });
+  
+  renderItemsList();
+  renderOpeningsList();
+  closeModal();
+};
+
 // Init
 init();
 renderItemsList();
+renderOpeningsList();
 </script>
 </body>
 </html>
