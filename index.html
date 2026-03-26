@@ -1,0 +1,609 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>מעצב חדרים תלת-ממדי</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{--bg:#1a1a2e;--panel:#16213e;--accent:#0f3460;--highlight:#e94560;--text:#eee;--text2:#aab;--border:#2a3a5e;--input-bg:#0a1628;--radius:8px}
+body{font-family:'Segoe UI',Tahoma,sans-serif;background:var(--bg);color:var(--text);overflow:hidden;height:100vh;width:100vw;direction:rtl}
+#app{display:flex;height:100vh;width:100vw}
+#sidebar{width:320px;background:var(--panel);border-left:1px solid var(--border);display:flex;flex-direction:column;overflow-y:auto;z-index:10;transition:transform .3s}
+#sidebar.hidden{transform:translateX(100%)}
+#canvas-wrap{flex:1;position:relative}
+canvas{display:block;width:100%!important;height:100%!important}
+.section{padding:14px;border-bottom:1px solid var(--border)}
+.section h3{font-size:14px;margin-bottom:10px;color:var(--highlight);display:flex;align-items:center;gap:6px}
+label{font-size:12px;color:var(--text2);display:block;margin-bottom:3px}
+input[type=text],input[type=number],select{width:100%;padding:8px;background:var(--input-bg);border:1px solid var(--border);border-radius:var(--radius);color:var(--text);font-size:13px;direction:rtl}
+input[type=color]{width:100%;height:36px;border:none;background:none;cursor:pointer;border-radius:var(--radius)}
+input[type=file]{display:none}
+.row{display:flex;gap:8px;margin-bottom:8px}
+.row>div{flex:1}
+.btn{padding:9px 16px;border:none;border-radius:var(--radius);cursor:pointer;font-size:13px;font-weight:600;transition:all .2s;width:100%;text-align:center}
+.btn-primary{background:var(--highlight);color:#fff}
+.btn-primary:hover{background:#d63a52}
+.btn-secondary{background:var(--accent);color:var(--text)}
+.btn-secondary:hover{background:#1a4a7a}
+.btn-danger{background:#c0392b;color:#fff}
+.btn-small{padding:6px 10px;font-size:11px;width:auto}
+.item-card{background:var(--input-bg);border:1px solid var(--border);border-radius:var(--radius);padding:10px;margin-bottom:8px;cursor:pointer;transition:border-color .2s}
+.item-card.selected{border-color:var(--highlight)}
+.item-card .name{font-weight:600;font-size:13px}
+.item-card .dims{font-size:11px;color:var(--text2)}
+.item-card .actions{display:flex;gap:4px;margin-top:6px}
+#toolbar{position:absolute;top:10px;right:10px;display:flex;gap:8px;z-index:5}
+#toolbar .btn{width:auto;padding:8px 14px;background:rgba(22,33,62,.9);backdrop-filter:blur(8px);border:1px solid var(--border)}
+#toggle-sidebar{position:absolute;top:10px;left:10px;z-index:15;background:rgba(22,33,62,.9);color:var(--text);border:1px solid var(--border);border-radius:var(--radius);padding:8px 12px;cursor:pointer;font-size:16px;display:none}
+#color-panel{display:none;position:absolute;bottom:20px;right:50%;transform:translateX(50%);background:rgba(22,33,62,.95);backdrop-filter:blur(8px);border:1px solid var(--border);border-radius:var(--radius);padding:14px;z-index:5;text-align:center;min-width:200px}
+#color-panel label{color:var(--text);font-size:13px;margin-bottom:6px}
+#status{position:absolute;bottom:10px;left:10px;font-size:11px;color:var(--text2);z-index:5;background:rgba(0,0,0,.5);padding:4px 10px;border-radius:var(--radius)}
+#modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:100;justify-content:center;align-items:center}
+#modal-overlay.show{display:flex}
+.modal{background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:20px;width:90%;max-width:400px;max-height:80vh;overflow-y:auto}
+.modal h3{margin-bottom:14px;color:var(--highlight)}
+.modal .row{margin-bottom:6px}
+.save-item{display:flex;justify-content:space-between;align-items:center;padding:10px;background:var(--input-bg);border-radius:var(--radius);margin-bottom:6px}
+.save-item .name{font-size:13px}
+.save-item .btns{display:flex;gap:4px}
+.upload-zone{border:2px dashed var(--border);border-radius:var(--radius);padding:20px;text-align:center;cursor:pointer;margin-bottom:10px;transition:border-color .2s}
+.upload-zone:hover{border-color:var(--highlight)}
+.upload-zone img{max-width:100%;max-height:80px;margin-top:8px;border-radius:4px}
+@media(max-width:768px){
+  #sidebar{position:fixed;right:0;top:0;bottom:0;width:85%;max-width:320px;z-index:20}
+  #sidebar.hidden{transform:translateX(100%)}
+  #toggle-sidebar{display:block}
+}
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="canvas-wrap">
+    <canvas id="c"></canvas>
+    <div id="toolbar">
+      <button class="btn" onclick="toggleCeiling()">⬆ תקרה</button>
+      <button class="btn" onclick="resetCamera()">📷 איפוס</button>
+    </div>
+    <button id="toggle-sidebar" onclick="document.getElementById('sidebar').classList.toggle('hidden')">☰ תפריט</button>
+    <div id="color-panel">
+      <label id="color-label">צבע משטח</label>
+      <input type="color" id="surface-color" value="#ffffff">
+      <br><button class="btn btn-small btn-secondary" style="margin-top:8px" onclick="closeColorPanel()">סגור</button>
+    </div>
+    <div id="status">לחץ על משטח לשינוי צבע | גרור פריטים להזזה</div>
+  </div>
+  <div id="sidebar">
+    <div class="section">
+      <h3>📐 מידות החדר (ס"מ)</h3>
+      <div class="row">
+        <div><label>אורך (X)</label><input type="number" id="roomX" value="400" min="100" max="2000"></div>
+        <div><label>רוחב (Z)</label><input type="number" id="roomZ" value="350" min="100" max="2000"></div>
+        <div><label>גובה (Y)</label><input type="number" id="roomY" value="260" min="100" max="500"></div>
+      </div>
+      <button class="btn btn-primary" onclick="buildRoom()">🔨 בנה חדר</button>
+    </div>
+    <div class="section">
+      <h3>🪑 פריטים</h3>
+      <button class="btn btn-secondary" onclick="showAddItem()" style="margin-bottom:10px">➕ הוסף פריט</button>
+      <div id="items-list"></div>
+    </div>
+    <div class="section">
+      <h3>💾 שמירה וטעינה</h3>
+      <div class="row">
+        <div style="flex:2"><input type="text" id="save-name" placeholder="שם העיצוב"></div>
+        <div><button class="btn btn-primary" onclick="saveDesign()">שמור</button></div>
+      </div>
+      <button class="btn btn-secondary" onclick="showLoadModal()" style="margin-top:6px">📂 טען עיצוב</button>
+    </div>
+  </div>
+</div>
+<div id="modal-overlay" onclick="if(event.target===this)closeModal()">
+  <div class="modal" id="modal-content"></div>
+</div>
+
+<script>
+// OrbitControls embedded (minimal implementation)
+THREE.OrbitControls=function(object,domElement){this.object=object;this.domElement=domElement;this.enabled=true;this.target=new THREE.Vector3();this.minDistance=10;this.maxDistance=5000;this.enableDamping=true;this.dampingFactor=0.08;this.enablePan=true;this.enableZoom=true;this.enableRotate=true;this.rotateSpeed=0.8;this.panSpeed=1;this.zoomSpeed=1.2;
+var scope=this,STATE={NONE:-1,ROTATE:0,ZOOM:1,PAN:2},state=STATE.NONE;
+var spherical=new THREE.Spherical(),sphericalDelta=new THREE.Spherical(),panOffset=new THREE.Vector3(),scale=1;
+var rotateStart=new THREE.Vector2(),rotateEnd=new THREE.Vector2(),rotateDelta=new THREE.Vector2();
+var panStart=new THREE.Vector2(),panEnd=new THREE.Vector2(),panDelta=new THREE.Vector2();
+var zoomStart=new THREE.Vector2(),zoomEnd=new THREE.Vector2(),zoomDelta=new THREE.Vector2();
+var offset=new THREE.Vector3(),quat=new THREE.Quaternion().setFromUnitVectors(object.up,new THREE.Vector3(0,1,0)),quatInverse=quat.clone().invert();
+var lastPosition=new THREE.Vector3(),lastQuaternion=new THREE.Quaternion();
+function getAutoRotationAngle(){return 0}
+function getZoomScale(){return Math.pow(0.95,scope.zoomSpeed)}
+function rotateLeft(angle){sphericalDelta.theta-=angle}
+function rotateUp(angle){sphericalDelta.phi-=angle}
+function panLeft(distance,objectMatrix){var v=new THREE.Vector3();v.setFromMatrixColumn(objectMatrix,0);v.multiplyScalar(-distance);panOffset.add(v)}
+function panUp(distance,objectMatrix){var v=new THREE.Vector3();v.setFromMatrixColumn(objectMatrix,1);v.multiplyScalar(distance);panOffset.add(v)}
+function pan(deltaX,deltaY){var el=scope.domElement;if(scope.object.isPerspectiveCamera){var position=scope.object.position;var o=new THREE.Vector3();o.copy(position).sub(scope.target);var targetDistance=o.length();targetDistance*=Math.tan((scope.object.fov/2)*Math.PI/180.0);panLeft(2*deltaX*targetDistance/el.clientHeight,scope.object.matrix);panUp(2*deltaY*targetDistance/el.clientHeight,scope.object.matrix)}}
+this.update=function(){offset.copy(scope.object.position).sub(scope.target);offset.applyQuaternion(quat);spherical.setFromVector3(offset);spherical.theta+=sphericalDelta.theta;spherical.phi+=sphericalDelta.phi;spherical.phi=Math.max(0.01,Math.min(Math.PI-0.01,spherical.phi));spherical.radius*=scale;spherical.radius=Math.max(scope.minDistance,Math.min(scope.maxDistance,spherical.radius));scope.target.add(panOffset);offset.setFromSpherical(spherical);offset.applyQuaternion(quatInverse);scope.object.position.copy(scope.target).add(offset);scope.object.lookAt(scope.target);if(scope.enableDamping){sphericalDelta.theta*=(1-scope.dampingFactor);sphericalDelta.phi*=(1-scope.dampingFactor);panOffset.multiplyScalar(1-scope.dampingFactor)}else{sphericalDelta.set(0,0,0);panOffset.set(0,0,0)}scale=1;return false};
+function onPointerDown(e){if(!scope.enabled)return;if(e.pointerType==='touch'){handleTouchStart(e)}else{if(e.button===0)state=STATE.ROTATE;else if(e.button===1)state=STATE.ZOOM;else if(e.button===2)state=STATE.PAN;if(state===STATE.ROTATE){rotateStart.set(e.clientX,e.clientY)}else if(state===STATE.PAN){panStart.set(e.clientX,e.clientY)}else if(state===STATE.ZOOM){zoomStart.set(e.clientX,e.clientY)}scope.domElement.setPointerCapture(e.pointerId)}}
+var pointers=[],prevPointers=[];
+function addPointer(e){pointers.push({pointerId:e.pointerId,clientX:e.clientX,clientY:e.clientY})}
+function removePointer(e){pointers=pointers.filter(p=>p.pointerId!==e.pointerId);prevPointers=prevPointers.filter(p=>p.pointerId!==e.pointerId)}
+function updatePointer(e){for(var i=0;i<pointers.length;i++){if(pointers[i].pointerId===e.pointerId){pointers[i].clientX=e.clientX;pointers[i].clientY=e.clientY;break}}}
+function handleTouchStart(e){addPointer(e);if(pointers.length===1){state=STATE.ROTATE;rotateStart.set(e.clientX,e.clientY)}else if(pointers.length===2){state=STATE.ZOOM;var dx=pointers[0].clientX-pointers[1].clientX,dy=pointers[0].clientY-pointers[1].clientY;zoomStart.set(0,Math.sqrt(dx*dx+dy*dy));panStart.set((pointers[0].clientX+pointers[1].clientX)/2,(pointers[0].clientY+pointers[1].clientY)/2)}}
+function onPointerMove(e){if(!scope.enabled)return;if(e.pointerType==='touch'){updatePointer(e);if(pointers.length===1&&state===STATE.ROTATE){rotateEnd.set(e.clientX,e.clientY);rotateDelta.subVectors(rotateEnd,rotateStart).multiplyScalar(scope.rotateSpeed);rotateLeft(2*Math.PI*rotateDelta.x/scope.domElement.clientHeight);rotateUp(2*Math.PI*rotateDelta.y/scope.domElement.clientHeight);rotateStart.copy(rotateEnd)}else if(pointers.length===2){var dx=pointers[0].clientX-pointers[1].clientX,dy=pointers[0].clientY-pointers[1].clientY;zoomEnd.set(0,Math.sqrt(dx*dx+dy*dy));zoomDelta.set(0,Math.pow(zoomEnd.y/zoomStart.y,scope.zoomSpeed));scale/=zoomDelta.y;zoomStart.copy(zoomEnd);var cx=(pointers[0].clientX+pointers[1].clientX)/2,cy=(pointers[0].clientY+pointers[1].clientY)/2;panEnd.set(cx,cy);panDelta.subVectors(panEnd,panStart).multiplyScalar(scope.panSpeed);pan(panDelta.x,panDelta.y);panStart.copy(panEnd)}}else{if(state===STATE.ROTATE){rotateEnd.set(e.clientX,e.clientY);rotateDelta.subVectors(rotateEnd,rotateStart).multiplyScalar(scope.rotateSpeed);rotateLeft(2*Math.PI*rotateDelta.x/scope.domElement.clientHeight);rotateUp(2*Math.PI*rotateDelta.y/scope.domElement.clientHeight);rotateStart.copy(rotateEnd)}else if(state===STATE.PAN){panEnd.set(e.clientX,e.clientY);panDelta.subVectors(panEnd,panStart).multiplyScalar(scope.panSpeed);pan(panDelta.x,panDelta.y);panStart.copy(panEnd)}else if(state===STATE.ZOOM){zoomEnd.set(e.clientX,e.clientY);zoomDelta.subVectors(zoomEnd,zoomStart);if(zoomDelta.y>0)scale*=getZoomScale();else if(zoomDelta.y<0)scale/=getZoomScale();zoomStart.copy(zoomEnd)}}}
+function onPointerUp(e){if(e.pointerType==='touch'){removePointer(e);if(pointers.length===0)state=STATE.NONE;else if(pointers.length===1){state=STATE.ROTATE;rotateStart.set(pointers[0].clientX,pointers[0].clientY)}}else{state=STATE.NONE}}
+function onWheel(e){if(!scope.enabled||!scope.enableZoom)return;e.preventDefault();if(e.deltaY<0)scale/=getZoomScale();else scale*=getZoomScale()}
+function onContextMenu(e){e.preventDefault()}
+domElement.addEventListener('pointerdown',onPointerDown);domElement.addEventListener('pointermove',onPointerMove);domElement.addEventListener('pointerup',onPointerUp);domElement.addEventListener('pointercancel',onPointerUp);domElement.addEventListener('wheel',onWheel,{passive:false});domElement.addEventListener('contextmenu',onContextMenu);
+this.dispose=function(){domElement.removeEventListener('pointerdown',onPointerDown);domElement.removeEventListener('pointermove',onPointerMove);domElement.removeEventListener('pointerup',onPointerUp);domElement.removeEventListener('pointercancel',onPointerUp);domElement.removeEventListener('wheel',onWheel);domElement.removeEventListener('contextmenu',onContextMenu)}};
+
+// ============ APP ============
+let scene, camera, renderer, controls, raycaster, mouse;
+let roomGroup, itemsGroup, gridGroup;
+let roomDims = {x:400, z:350, y:260};
+let surfaces = {}; // floor, ceiling, wallN, wallS, wallE, wallW
+let items = []; // {mesh, name, w, d, h, imageData, rotation}
+let selectedSurface = null;
+let selectedItem = null;
+let ceilingVisible = true;
+let isDragging = false, dragItem = null, dragPlane, dragOffset = new THREE.Vector3();
+
+const canvas = document.getElementById('c');
+
+function init() {
+  scene = new THREE.Scene();
+  scene.background = new THREE.Color(0x0d1117);
+  
+  camera = new THREE.PerspectiveCamera(50, canvas.clientWidth/canvas.clientHeight, 1, 10000);
+  renderer = new THREE.WebGLRenderer({canvas, antialias:true});
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio,2));
+  renderer.setSize(canvas.clientWidth, canvas.clientHeight);
+  renderer.shadowMap.enabled = true;
+  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  
+  controls = new THREE.OrbitControls(camera, canvas);
+  controls.enableDamping = true;
+  controls.dampingFactor = 0.08;
+  controls.minDistance = 50;
+  controls.maxDistance = 3000;
+  
+  // Lighting
+  const ambient = new THREE.AmbientLight(0xffffff, 0.5);
+  scene.add(ambient);
+  const dir = new THREE.DirectionalLight(0xffffff, 0.7);
+  dir.position.set(300, 500, 200);
+  dir.castShadow = true;
+  dir.shadow.mapSize.set(1024,1024);
+  dir.shadow.camera.near=1;dir.shadow.camera.far=2000;
+  dir.shadow.camera.left=-500;dir.shadow.camera.right=500;
+  dir.shadow.camera.top=500;dir.shadow.camera.bottom=-500;
+  scene.add(dir);
+  const dir2 = new THREE.DirectionalLight(0xffffff, 0.3);
+  dir2.position.set(-200, 300, -300);
+  scene.add(dir2);
+
+  raycaster = new THREE.Raycaster();
+  mouse = new THREE.Vector2();
+  dragPlane = new THREE.Plane(new THREE.Vector3(0,1,0), 0);
+
+  roomGroup = new THREE.Group(); scene.add(roomGroup);
+  itemsGroup = new THREE.Group(); scene.add(itemsGroup);
+  gridGroup = new THREE.Group(); scene.add(gridGroup);
+
+  canvas.addEventListener('pointerdown', onCanvasDown);
+  canvas.addEventListener('pointermove', onCanvasMove);
+  canvas.addEventListener('pointerup', onCanvasUp);
+  document.getElementById('surface-color').addEventListener('input', onColorChange);
+  
+  window.addEventListener('resize', onResize);
+  
+  buildRoom();
+  animate();
+}
+
+function onResize() {
+  const w = canvas.clientWidth, h = canvas.clientHeight;
+  camera.aspect = w/h;
+  camera.updateProjectionMatrix();
+  renderer.setSize(w, h);
+}
+
+function animate() {
+  requestAnimationFrame(animate);
+  controls.update();
+  renderer.render(scene, camera);
+}
+
+function buildRoom() {
+  roomDims.x = +document.getElementById('roomX').value || 400;
+  roomDims.z = +document.getElementById('roomZ').value || 350;
+  roomDims.y = +document.getElementById('roomY').value || 260;
+  const {x,y,z} = roomDims;
+
+  // Clear
+  while(roomGroup.children.length) roomGroup.remove(roomGroup.children[0]);
+  while(gridGroup.children.length) gridGroup.remove(gridGroup.children[0]);
+  surfaces = {};
+
+  const wallMat = (color) => new THREE.MeshStandardMaterial({color, side:THREE.DoubleSide, roughness:0.8});
+
+  // Floor
+  const floor = new THREE.Mesh(new THREE.PlaneGeometry(x,z), wallMat(0xd4c5a9));
+  floor.rotation.x = -Math.PI/2; floor.position.set(x/2, 0, z/2);
+  floor.receiveShadow = true;
+  floor.userData.surface = 'floor'; surfaces.floor = floor; roomGroup.add(floor);
+
+  // Ceiling
+  const ceil = new THREE.Mesh(new THREE.PlaneGeometry(x,z), new THREE.MeshStandardMaterial({color:0xffffff,side:THREE.DoubleSide,transparent:true,opacity:0.3,roughness:0.9}));
+  ceil.rotation.x = Math.PI/2; ceil.position.set(x/2, y, z/2);
+  ceil.userData.surface = 'ceiling'; surfaces.ceiling = ceil; roomGroup.add(ceil);
+
+  // Walls: back (z=0), front (z=Z), left (x=0), right (x=X)
+  const wallBack = new THREE.Mesh(new THREE.PlaneGeometry(x,y), wallMat(0xe8e0d0));
+  wallBack.position.set(x/2, y/2, 0); wallBack.userData.surface='wallBack'; surfaces.wallBack=wallBack; roomGroup.add(wallBack);
+
+  const wallFront = new THREE.Mesh(new THREE.PlaneGeometry(x,y), wallMat(0xe8e0d0));
+  wallFront.rotation.y = Math.PI; wallFront.position.set(x/2, y/2, z); wallFront.userData.surface='wallFront'; surfaces.wallFront=wallFront; roomGroup.add(wallFront);
+
+  const wallLeft = new THREE.Mesh(new THREE.PlaneGeometry(z,y), wallMat(0xddd5c5));
+  wallLeft.rotation.y = Math.PI/2; wallLeft.position.set(0, y/2, z/2); wallLeft.userData.surface='wallLeft'; surfaces.wallLeft=wallLeft; roomGroup.add(wallLeft);
+
+  const wallRight = new THREE.Mesh(new THREE.PlaneGeometry(z,y), wallMat(0xddd5c5));
+  wallRight.rotation.y = -Math.PI/2; wallRight.position.set(x, y/2, z/2); wallRight.userData.surface='wallRight'; surfaces.wallRight=wallRight; roomGroup.add(wallRight);
+
+  // Grid
+  buildGrid();
+
+  // Camera
+  resetCamera();
+  ceilingVisible = true;
+}
+
+function buildGrid() {
+  const {x,z} = roomDims;
+  const mat = new THREE.LineBasicMaterial({color:0x555555, transparent:true, opacity:0.4});
+  for(let i=0; i<=x; i+=50) {
+    const geo = new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(i,0.5,0), new THREE.Vector3(i,0.5,z)]);
+    gridGroup.add(new THREE.Line(geo, mat));
+  }
+  for(let j=0; j<=z; j+=50) {
+    const geo = new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(0,0.5,j), new THREE.Vector3(x,0.5,j)]);
+    gridGroup.add(new THREE.Line(geo, mat));
+  }
+  // Labels every 100cm
+  const loader = new THREE.FontLoader ? null : null; // skip font, use sprites
+  for(let i=0;i<=x;i+=100){
+    const s = makeTextSprite(i+'', 0x888888);
+    s.position.set(i, 0.5, -15); s.scale.set(30,15,1);
+    gridGroup.add(s);
+  }
+  for(let j=100;j<=z;j+=100){
+    const s = makeTextSprite(j+'', 0x888888);
+    s.position.set(-15, 0.5, j); s.scale.set(30,15,1);
+    gridGroup.add(s);
+  }
+}
+
+function makeTextSprite(text, color) {
+  const c = document.createElement('canvas'); c.width=64; c.height=32;
+  const ctx = c.getContext('2d');
+  ctx.fillStyle = '#'+color.toString(16).padStart(6,'0');
+  ctx.font = '20px sans-serif'; ctx.textAlign='center'; ctx.textBaseline='middle';
+  ctx.fillText(text, 32, 16);
+  const tex = new THREE.CanvasTexture(c);
+  const mat = new THREE.SpriteMaterial({map:tex, transparent:true});
+  return new THREE.Sprite(mat);
+}
+
+function resetCamera() {
+  const {x,y,z} = roomDims;
+  camera.position.set(x*1.2, y*1.5, z*1.5);
+  controls.target.set(x/2, y/3, z/2);
+  controls.update();
+}
+
+function toggleCeiling() {
+  ceilingVisible = !ceilingVisible;
+  if(surfaces.ceiling) surfaces.ceiling.visible = ceilingVisible;
+}
+
+// ========== SURFACE COLOR ==========
+let colorTarget = null;
+function onColorChange(e) {
+  if(!colorTarget) return;
+  colorTarget.material.color.set(e.target.value);
+}
+function closeColorPanel() {
+  document.getElementById('color-panel').style.display='none';
+  colorTarget = null;
+}
+
+// ========== ITEM DRAGGING ==========
+let pointerDownPos = new THREE.Vector2();
+let pointerMoved = false;
+
+function onCanvasDown(e) {
+  if(e.button === 2) return; // right click for orbit pan
+  pointerDownPos.set(e.clientX, e.clientY);
+  pointerMoved = false;
+  
+  const rect = canvas.getBoundingClientRect();
+  mouse.x = ((e.clientX - rect.left)/rect.width)*2-1;
+  mouse.y = -((e.clientY - rect.top)/rect.height)*2+1;
+  raycaster.setFromCamera(mouse, camera);
+
+  // Check items first
+  const itemMeshes = items.map(i=>i.mesh);
+  const hits = raycaster.intersectObjects(itemMeshes);
+  if(hits.length > 0) {
+    dragItem = items.find(i=>i.mesh===hits[0].object);
+    if(dragItem) {
+      controls.enabled = false;
+      isDragging = true;
+      dragPlane.set(new THREE.Vector3(0,1,0), -dragItem.mesh.position.y);
+      const pt = new THREE.Vector3();
+      raycaster.ray.intersectPlane(dragPlane, pt);
+      dragOffset.copy(dragItem.mesh.position).sub(pt);
+      selectItem(dragItem);
+    }
+    return;
+  }
+}
+
+function onCanvasMove(e) {
+  const dx = e.clientX - pointerDownPos.x, dy = e.clientY - pointerDownPos.y;
+  if(Math.abs(dx)+Math.abs(dy) > 5) pointerMoved = true;
+  
+  if(isDragging && dragItem) {
+    const rect = canvas.getBoundingClientRect();
+    mouse.x = ((e.clientX-rect.left)/rect.width)*2-1;
+    mouse.y = -((e.clientY-rect.top)/rect.height)*2+1;
+    raycaster.setFromCamera(mouse, camera);
+    const pt = new THREE.Vector3();
+    raycaster.ray.intersectPlane(dragPlane, pt);
+    pt.add(dragOffset);
+    // Clamp to room
+    const hw = dragItem.w/2, hd = dragItem.d/2;
+    pt.x = Math.max(hw, Math.min(roomDims.x-hw, pt.x));
+    pt.z = Math.max(hd, Math.min(roomDims.z-hd, pt.z));
+    dragItem.mesh.position.x = pt.x;
+    dragItem.mesh.position.z = pt.z;
+  }
+}
+
+function onCanvasUp(e) {
+  if(isDragging) {
+    isDragging = false;
+    dragItem = null;
+    controls.enabled = true;
+    return;
+  }
+  if(pointerMoved) return;
+  
+  // Click detection - check surfaces
+  const rect = canvas.getBoundingClientRect();
+  mouse.x = ((e.clientX-rect.left)/rect.width)*2-1;
+  mouse.y = -((e.clientY-rect.top)/rect.height)*2+1;
+  raycaster.setFromCamera(mouse, camera);
+  
+  const surfaceArr = Object.values(surfaces).filter(s=>s.visible);
+  const hits = raycaster.intersectObjects(surfaceArr);
+  if(hits.length > 0) {
+    colorTarget = hits[0].object;
+    const names = {floor:'רצפה',ceiling:'תקרה',wallBack:'קיר אחורי',wallFront:'קיר קדמי',wallLeft:'קיר שמאל',wallRight:'קיר ימין'};
+    document.getElementById('color-label').textContent = 'צבע: ' + (names[colorTarget.userData.surface]||'');
+    document.getElementById('surface-color').value = '#'+colorTarget.material.color.getHexString();
+    document.getElementById('color-panel').style.display='block';
+    deselectItem();
+  } else {
+    closeColorPanel();
+    deselectItem();
+  }
+}
+
+// ========== ITEMS ==========
+function selectItem(item) {
+  deselectItem();
+  selectedItem = item;
+  item.mesh.material.forEach ? item.mesh.material.forEach(m=>m.emissive&&m.emissive.set(0x331111)) : (item.mesh.material.emissive && item.mesh.material.emissive.set(0x331111));
+  renderItemsList();
+}
+function deselectItem() {
+  if(selectedItem) {
+    const m = selectedItem.mesh.material;
+    if(Array.isArray(m)) m.forEach(mt=>mt.emissive&&mt.emissive.set(0));
+    else if(m.emissive) m.emissive.set(0);
+  }
+  selectedItem = null;
+  renderItemsList();
+}
+
+function showAddItem() {
+  const mc = document.getElementById('modal-content');
+  mc.innerHTML = `
+    <h3>➕ הוסף פריט חדש</h3>
+    <div><label>שם הפריט</label><input type="text" id="item-name" placeholder="ספה, שולחן..." value=""></div>
+    <div class="row" style="margin-top:10px">
+      <div><label>רוחב (ס"מ)</label><input type="number" id="item-w" value="100" min="5"></div>
+      <div><label>עומק (ס"מ)</label><input type="number" id="item-d" value="60" min="5"></div>
+      <div><label>גובה (ס"מ)</label><input type="number" id="item-h" value="80" min="5"></div>
+    </div>
+    <div class="upload-zone" id="upload-zone" onclick="document.getElementById('item-file').click()">
+      📷 לחץ להעלאת תמונה<br><small>(אופציונלי)</small>
+      <div id="upload-preview"></div>
+    </div>
+    <input type="file" id="item-file" accept="image/*" onchange="previewItemImage(this)">
+    <button class="btn btn-primary" onclick="addItem()">הוסף</button>
+    <button class="btn btn-secondary" style="margin-top:6px" onclick="closeModal()">ביטול</button>
+  `;
+  document.getElementById('modal-overlay').classList.add('show');
+}
+
+let pendingImageData = null;
+function previewItemImage(input) {
+  if(!input.files[0]) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    pendingImageData = e.target.result;
+    document.getElementById('upload-preview').innerHTML = `<img src="${pendingImageData}">`;
+  };
+  reader.readAsDataURL(input.files[0]);
+}
+
+function addItem() {
+  const name = document.getElementById('item-name').value || 'פריט';
+  const w = +document.getElementById('item-w').value || 100;
+  const d = +document.getElementById('item-d').value || 60;
+  const h = +document.getElementById('item-h').value || 80;
+  
+  createItemMesh(name, w, d, h, pendingImageData, roomDims.x/2, roomDims.z/2, 0);
+  pendingImageData = null;
+  closeModal();
+  renderItemsList();
+}
+
+function createItemMesh(name, w, d, h, imageData, px, pz, rotY) {
+  const geo = new THREE.BoxGeometry(w, h, d);
+  let materials;
+  const baseMat = new THREE.MeshStandardMaterial({color:0x8899aa, roughness:0.6});
+  
+  if(imageData) {
+    const tex = new THREE.TextureLoader().load(imageData);
+    tex.encoding = THREE.sRGBEncoding;
+    const imgMat = new THREE.MeshStandardMaterial({map:tex, roughness:0.5});
+    // front face gets the image (index 4)
+    materials = [baseMat.clone(), baseMat.clone(), baseMat.clone(), baseMat.clone(), imgMat, baseMat.clone()];
+  } else {
+    const c = new THREE.Color().setHSL(Math.random()*0.15+0.55, 0.3, 0.45);
+    materials = new THREE.MeshStandardMaterial({color:c, roughness:0.6});
+  }
+  
+  const mesh = new THREE.Mesh(geo, materials);
+  mesh.position.set(px, h/2, pz);
+  mesh.rotation.y = rotY || 0;
+  mesh.castShadow = true;
+  mesh.receiveShadow = true;
+  itemsGroup.add(mesh);
+  
+  // Label
+  const label = makeTextSprite(name, 0xffffff);
+  label.position.set(0, h/2 + 15, 0);
+  label.scale.set(Math.max(w,60), Math.max(w,60)/2, 1);
+  mesh.add(label);
+  
+  const item = {mesh, name, w, d, h, imageData, rotY: rotY||0};
+  items.push(item);
+  return item;
+}
+
+function deleteItem(idx) {
+  const item = items[idx];
+  if(!item) return;
+  itemsGroup.remove(item.mesh);
+  item.mesh.geometry.dispose();
+  if(selectedItem === item) selectedItem = null;
+  items.splice(idx, 1);
+  renderItemsList();
+}
+
+function rotateItem(idx) {
+  const item = items[idx];
+  if(!item) return;
+  item.rotY += Math.PI/4;
+  item.mesh.rotation.y = item.rotY;
+}
+
+function renderItemsList() {
+  const el = document.getElementById('items-list');
+  if(items.length === 0) { el.innerHTML = '<div style="color:var(--text2);font-size:12px;text-align:center;padding:10px">אין פריטים עדיין</div>'; return; }
+  el.innerHTML = items.map((item, i) => `
+    <div class="item-card ${selectedItem===item?'selected':''}" onclick="selectItem(items[${i}])">
+      <div class="name">${item.name}</div>
+      <div class="dims">${item.w}×${item.d}×${item.h} ס"מ</div>
+      <div class="actions">
+        <button class="btn btn-small btn-secondary" onclick="event.stopPropagation();rotateItem(${i})">🔄</button>
+        <button class="btn btn-small btn-danger" onclick="event.stopPropagation();deleteItem(${i})">🗑</button>
+      </div>
+    </div>
+  `).join('');
+}
+
+// ========== SAVE/LOAD ==========
+function saveDesign() {
+  const name = document.getElementById('save-name').value.trim();
+  if(!name) { alert('נא להזין שם לעיצוב'); return; }
+  const data = {
+    roomDims: {...roomDims},
+    surfaces: {},
+    items: items.map(i => ({name:i.name, w:i.w, d:i.d, h:i.h, imageData:i.imageData||null, px:i.mesh.position.x, pz:i.mesh.position.z, rotY:i.rotY})),
+    timestamp: Date.now()
+  };
+  for(const [k,v] of Object.entries(surfaces)) {
+    data.surfaces[k] = '#'+v.material.color.getHexString();
+  }
+  const saves = JSON.parse(localStorage.getItem('roomDesigns')||'{}');
+  saves[name] = data;
+  localStorage.setItem('roomDesigns', JSON.stringify(saves));
+  document.getElementById('save-name').value = '';
+  alert('נשמר בהצלחה! ✅');
+}
+
+function showLoadModal() {
+  const saves = JSON.parse(localStorage.getItem('roomDesigns')||'{}');
+  const keys = Object.keys(saves);
+  const mc = document.getElementById('modal-content');
+  if(keys.length === 0) {
+    mc.innerHTML = '<h3>📂 עיצובים שמורים</h3><p style="color:var(--text2)">אין עיצובים שמורים</p><button class="btn btn-secondary" onclick="closeModal()">סגור</button>';
+  } else {
+    mc.innerHTML = '<h3>📂 עיצובים שמורים</h3>' + keys.map(k => {
+      const d = new Date(saves[k].timestamp);
+      return `<div class="save-item"><div><div class="name">${k}</div><small style="color:var(--text2)">${d.toLocaleDateString('he-IL')} ${d.toLocaleTimeString('he-IL',{hour:'2-digit',minute:'2-digit'})}</small></div><div class="btns"><button class="btn btn-small btn-primary" onclick="loadDesign('${k}')">טען</button><button class="btn btn-small btn-danger" onclick="deleteSave('${k}')">🗑</button></div></div>`;
+    }).join('') + '<button class="btn btn-secondary" style="margin-top:10px" onclick="closeModal()">סגור</button>';
+  }
+  document.getElementById('modal-overlay').classList.add('show');
+}
+
+function loadDesign(name) {
+  const saves = JSON.parse(localStorage.getItem('roomDesigns')||'{}');
+  const data = saves[name];
+  if(!data) return;
+  
+  document.getElementById('roomX').value = data.roomDims.x;
+  document.getElementById('roomZ').value = data.roomDims.z;
+  document.getElementById('roomY').value = data.roomDims.y;
+  
+  // Clear items
+  while(itemsGroup.children.length) itemsGroup.remove(itemsGroup.children[0]);
+  items = []; selectedItem = null;
+  
+  buildRoom();
+  
+  // Restore colors
+  for(const [k,v] of Object.entries(data.surfaces||{})) {
+    if(surfaces[k]) surfaces[k].material.color.set(v);
+  }
+  
+  // Restore items
+  (data.items||[]).forEach(i => {
+    createItemMesh(i.name, i.w, i.d, i.h, i.imageData, i.px, i.pz, i.rotY);
+  });
+  
+  renderItemsList();
+  closeModal();
+}
+
+function deleteSave(name) {
+  const saves = JSON.parse(localStorage.getItem('roomDesigns')||'{}');
+  delete saves[name];
+  localStorage.setItem('roomDesigns', JSON.stringify(saves));
+  showLoadModal();
+}
+
+function closeModal() {
+  document.getElementById('modal-overlay').classList.remove('show');
+  pendingImageData = null;
+}
+
+// Init
+init();
+renderItemsList();
+</script>
+</body>
+</html>
