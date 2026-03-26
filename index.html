@@ -108,43 +108,43 @@ input[type=file]{display:none}
       <h3>🏋️ מתקני כושר</h3>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;max-height:420px;overflow-y:auto;padding:4px" id="gym-catalog">
         <div class="gym-card" onclick="addGymEquipment('treadmill')">
-          <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/6/62/Treadmill-gym.jpg/250px-Treadmill-gym.jpg" alt="Treadmill">
+          <img src="https://images.unsplash.com/photo-1576678927484-cc907957088c?w=300&fit=crop" alt="Treadmill" crossorigin="anonymous">
           <span>הליכון</span>
         </div>
         <div class="gym-card" onclick="addGymEquipment('bench')">
-          <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/8/8b/Weight_Bench_set.jpg/250px-Weight_Bench_set.jpg" alt="Weight Bench">
+          <img src="https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=300&fit=crop" alt="Weight Bench" crossorigin="anonymous">
           <span>ספסל משקולות</span>
         </div>
         <div class="gym-card" onclick="addGymEquipment('squat_rack')">
-          <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/a/a3/Powerrack.jpg/250px-Powerrack.jpg" alt="Squat Rack">
+          <img src="https://images.unsplash.com/photo-1517963879433-6ad2b056d712?w=300&fit=crop" alt="Squat Rack" crossorigin="anonymous">
           <span>מתקן סקוואט</span>
         </div>
         <div class="gym-card" onclick="addGymEquipment('dumbbells')">
-          <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/c/c1/Young_man_lifting_dumbbell_weight_for_exercise_in_fitness_gym.jpg/250px-Young_man_lifting_dumbbell_weight_for_exercise_in_fitness_gym.jpg" alt="Dumbbells">
+          <img src="https://images.unsplash.com/photo-1583454110551-21f2fa2afe61?w=300&fit=crop" alt="Dumbbells" crossorigin="anonymous">
           <span>דמבלים</span>
         </div>
         <div class="gym-card" onclick="addGymEquipment('bike')">
-          <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/f/ff/Hicc_-_exercise_bike.jpg/250px-Hicc_-_exercise_bike.jpg" alt="Stationary Bike">
+          <img src="https://images.unsplash.com/photo-1591291621164-2c6367723315?w=300&fit=crop" alt="Stationary Bike" crossorigin="anonymous">
           <span>אופני כושר</span>
         </div>
         <div class="gym-card" onclick="addGymEquipment('cable_machine')">
-          <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/e/e7/Sz%C3%A9kesfeh%C3%A9rv%C3%A1r%2C_Cutler_Gym%2C_Combined_cable_machine.jpg/250px-Sz%C3%A9kesfeh%C3%A9rv%C3%A1r%2C_Cutler_Gym%2C_Combined_cable_machine.jpg" alt="Cable Machine">
+          <img src="https://images.unsplash.com/photo-1638536532686-d610adfc8e5c?w=300&fit=crop" alt="Cable Machine" crossorigin="anonymous">
           <span>מתקן כבלים</span>
         </div>
         <div class="gym-card" onclick="addGymEquipment('smith_machine')">
-          <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/7/74/Smith_machine.webp/250px-Smith_machine.webp.png" alt="Smith Machine">
+          <img src="https://images.unsplash.com/photo-1534367610401-9f5ed68180aa?w=300&fit=crop" alt="Smith Machine" crossorigin="anonymous">
           <span>מתקן סמית׳</span>
         </div>
         <div class="gym-card" onclick="addGymEquipment('pullup_bar')">
-          <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/1/17/Pull-up_bar.JPG/250px-Pull-up_bar.JPG" alt="Pull-up Bar">
+          <img src="https://images.unsplash.com/photo-1598971639058-a5a0c60844c0?w=300&fit=crop" alt="Pull-up Bar" crossorigin="anonymous">
           <span>מתקן מתח</span>
         </div>
         <div class="gym-card" onclick="addGymEquipment('exercise_ball')">
-          <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/2/29/Exercise_ball.jpg/250px-Exercise_ball.jpg" alt="Exercise Ball">
+          <img src="https://images.unsplash.com/photo-1544367567-0f2fcb009e0b?w=300&fit=crop" alt="Exercise Ball" crossorigin="anonymous">
           <span>כדור כושר</span>
         </div>
         <div class="gym-card" onclick="addGymEquipment('yoga_mat')">
-          <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/f/fc/Fitness_enthusiast_performs_plank_exercise_at_home_on_yoga_mat.jpg/250px-Fitness_enthusiast_performs_plank_exercise_at_home_on_yoga_mat.jpg" alt="Yoga Mat">
+          <img src="https://images.unsplash.com/photo-1601925260368-ae2f83cf8b7f?w=300&fit=crop" alt="Yoga Mat" crossorigin="anonymous">
           <span>מזרון יוגה</span>
         </div>
       </div>
@@ -1230,23 +1230,25 @@ const gymEquipmentCreators = {
 
 // Billboard dimensions (width x height in cm) and image URLs for each equipment type
 const gymBillboardInfo = {
-  treadmill:      { w:180, h:140, name:'הליכון',         img:'https://upload.wikimedia.org/wikipedia/commons/thumb/6/62/Treadmill-gym.jpg/250px-Treadmill-gym.jpg' },
-  bench:          { w:130, h:80,  name:'ספסל משקולות',    img:'https://upload.wikimedia.org/wikipedia/commons/thumb/8/8b/Weight_Bench_set.jpg/250px-Weight_Bench_set.jpg' },
-  squat_rack:     { w:120, h:200, name:'מתקן סקוואט',    img:'https://upload.wikimedia.org/wikipedia/commons/thumb/a/a3/Powerrack.jpg/250px-Powerrack.jpg' },
-  dumbbells:      { w:60,  h:40,  name:'דמבלים',          img:'https://upload.wikimedia.org/wikipedia/commons/thumb/c/c1/Young_man_lifting_dumbbell_weight_for_exercise_in_fitness_gym.jpg/250px-Young_man_lifting_dumbbell_weight_for_exercise_in_fitness_gym.jpg' },
-  bike:           { w:110, h:130, name:'אופני כושר',      img:'https://upload.wikimedia.org/wikipedia/commons/thumb/f/ff/Hicc_-_exercise_bike.jpg/250px-Hicc_-_exercise_bike.jpg' },
-  cable_machine:  { w:120, h:210, name:'מתקן כבלים',     img:'https://upload.wikimedia.org/wikipedia/commons/thumb/e/e7/Sz%C3%A9kesfeh%C3%A9rv%C3%A1r%2C_Cutler_Gym%2C_Combined_cable_machine.jpg/250px-Sz%C3%A9kesfeh%C3%A9rv%C3%A1r%2C_Cutler_Gym%2C_Combined_cable_machine.jpg' },
-  smith_machine:  { w:140, h:210, name:'מתקן סמית׳',     img:'https://upload.wikimedia.org/wikipedia/commons/thumb/7/74/Smith_machine.webp/250px-Smith_machine.webp.png' },
-  pullup_bar:     { w:120, h:220, name:'מתקן מתח',       img:'https://upload.wikimedia.org/wikipedia/commons/thumb/1/17/Pull-up_bar.JPG/250px-Pull-up_bar.JPG' },
-  exercise_ball:  { w:65,  h:65,  name:'כדור כושר',       img:'https://upload.wikimedia.org/wikipedia/commons/thumb/2/29/Exercise_ball.jpg/250px-Exercise_ball.jpg' },
-  yoga_mat:       { w:180, h:60,  name:'מזרון יוגה',      img:'https://upload.wikimedia.org/wikipedia/commons/thumb/f/fc/Fitness_enthusiast_performs_plank_exercise_at_home_on_yoga_mat.jpg/250px-Fitness_enthusiast_performs_plank_exercise_at_home_on_yoga_mat.jpg', flat:true }
+  treadmill:      { w:180, h:140, name:'הליכון',         img:'https://images.unsplash.com/photo-1576678927484-cc907957088c?w=300&fit=crop' },
+  bench:          { w:130, h:80,  name:'ספסל משקולות',    img:'https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=300&fit=crop' },
+  squat_rack:     { w:120, h:200, name:'מתקן סקוואט',    img:'https://images.unsplash.com/photo-1517963879433-6ad2b056d712?w=300&fit=crop' },
+  dumbbells:      { w:60,  h:40,  name:'דמבלים',          img:'https://images.unsplash.com/photo-1583454110551-21f2fa2afe61?w=300&fit=crop' },
+  bike:           { w:110, h:130, name:'אופני כושר',      img:'https://images.unsplash.com/photo-1591291621164-2c6367723315?w=300&fit=crop' },
+  cable_machine:  { w:120, h:210, name:'מתקן כבלים',     img:'https://images.unsplash.com/photo-1638536532686-d610adfc8e5c?w=300&fit=crop' },
+  smith_machine:  { w:140, h:210, name:'מתקן סמית׳',     img:'https://images.unsplash.com/photo-1534367610401-9f5ed68180aa?w=300&fit=crop' },
+  pullup_bar:     { w:120, h:220, name:'מתקן מתח',       img:'https://images.unsplash.com/photo-1598971639058-a5a0c60844c0?w=300&fit=crop' },
+  exercise_ball:  { w:65,  h:65,  name:'כדור כושר',       img:'https://images.unsplash.com/photo-1544367567-0f2fcb009e0b?w=300&fit=crop' },
+  yoga_mat:       { w:180, h:60,  name:'מזרון יוגה',      img:'https://images.unsplash.com/photo-1601925260368-ae2f83cf8b7f?w=300&fit=crop', flat:true }
 };
 
 function createGymBillboard(type) {
   const info = gymBillboardInfo[type];
   if(!info) return null;
   const g = new THREE.Group();
-  const texture = new THREE.TextureLoader().load(info.img);
+  const loader = new THREE.TextureLoader();
+  loader.crossOrigin = 'anonymous';
+  const texture = loader.load(info.img);
   texture.encoding = THREE.sRGBEncoding;
   const mat = new THREE.MeshBasicMaterial({ map: texture, transparent: true, side: THREE.DoubleSide });
 
