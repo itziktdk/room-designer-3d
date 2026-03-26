@@ -1228,10 +1228,50 @@ const gymEquipmentCreators = {
   yoga_mat: createYogaMat
 };
 
+// Billboard dimensions (width x height in cm) and image URLs for each equipment type
+const gymBillboardInfo = {
+  treadmill:      { w:180, h:140, name:'הליכון',         img:'https://upload.wikimedia.org/wikipedia/commons/thumb/6/62/Treadmill-gym.jpg/250px-Treadmill-gym.jpg' },
+  bench:          { w:130, h:80,  name:'ספסל משקולות',    img:'https://upload.wikimedia.org/wikipedia/commons/thumb/8/8b/Weight_Bench_set.jpg/250px-Weight_Bench_set.jpg' },
+  squat_rack:     { w:120, h:200, name:'מתקן סקוואט',    img:'https://upload.wikimedia.org/wikipedia/commons/thumb/a/a3/Powerrack.jpg/250px-Powerrack.jpg' },
+  dumbbells:      { w:60,  h:40,  name:'דמבלים',          img:'https://upload.wikimedia.org/wikipedia/commons/thumb/c/c1/Young_man_lifting_dumbbell_weight_for_exercise_in_fitness_gym.jpg/250px-Young_man_lifting_dumbbell_weight_for_exercise_in_fitness_gym.jpg' },
+  bike:           { w:110, h:130, name:'אופני כושר',      img:'https://upload.wikimedia.org/wikipedia/commons/thumb/f/ff/Hicc_-_exercise_bike.jpg/250px-Hicc_-_exercise_bike.jpg' },
+  cable_machine:  { w:120, h:210, name:'מתקן כבלים',     img:'https://upload.wikimedia.org/wikipedia/commons/thumb/e/e7/Sz%C3%A9kesfeh%C3%A9rv%C3%A1r%2C_Cutler_Gym%2C_Combined_cable_machine.jpg/250px-Sz%C3%A9kesfeh%C3%A9rv%C3%A1r%2C_Cutler_Gym%2C_Combined_cable_machine.jpg' },
+  smith_machine:  { w:140, h:210, name:'מתקן סמית׳',     img:'https://upload.wikimedia.org/wikipedia/commons/thumb/7/74/Smith_machine.webp/250px-Smith_machine.webp.png' },
+  pullup_bar:     { w:120, h:220, name:'מתקן מתח',       img:'https://upload.wikimedia.org/wikipedia/commons/thumb/1/17/Pull-up_bar.JPG/250px-Pull-up_bar.JPG' },
+  exercise_ball:  { w:65,  h:65,  name:'כדור כושר',       img:'https://upload.wikimedia.org/wikipedia/commons/thumb/2/29/Exercise_ball.jpg/250px-Exercise_ball.jpg' },
+  yoga_mat:       { w:180, h:60,  name:'מזרון יוגה',      img:'https://upload.wikimedia.org/wikipedia/commons/thumb/f/fc/Fitness_enthusiast_performs_plank_exercise_at_home_on_yoga_mat.jpg/250px-Fitness_enthusiast_performs_plank_exercise_at_home_on_yoga_mat.jpg', flat:true }
+};
+
+function createGymBillboard(type) {
+  const info = gymBillboardInfo[type];
+  if(!info) return null;
+  const g = new THREE.Group();
+  const texture = new THREE.TextureLoader().load(info.img);
+  texture.encoding = THREE.sRGBEncoding;
+  const mat = new THREE.MeshBasicMaterial({ map: texture, transparent: true, side: THREE.DoubleSide });
+
+  if(info.flat) {
+    // Yoga mat: lay flat on the floor
+    const plane = new THREE.Mesh(new THREE.PlaneGeometry(info.w, info.h), mat);
+    plane.rotation.x = -Math.PI / 2;
+    plane.position.y = 0.5; // just above floor
+    plane.receiveShadow = true;
+    g.add(plane);
+    return { group: g, name: info.name, w: info.w, d: info.h, h: 2 };
+  } else {
+    // Vertical billboard
+    const plane = new THREE.Mesh(new THREE.PlaneGeometry(info.w, info.h), mat);
+    plane.position.y = info.h / 2; // bottom edge on floor
+    plane.castShadow = true;
+    g.add(plane);
+    return { group: g, name: info.name, w: info.w, d: 10, h: info.h };
+  }
+}
+
 function addGymEquipment(type) {
-  const creator = gymEquipmentCreators[type];
-  if(!creator) return;
-  const {group, name, w, d, h} = creator();
+  const result = createGymBillboard(type);
+  if(!result) return;
+  const {group, name, w, d, h} = result;
   group.position.set(roomDims.x/2, 0, roomDims.z/2);
   itemsGroup.add(group);
   
@@ -1353,9 +1393,11 @@ loadDesign = function(name) {
   }
   
   (data.items||[]).forEach(i => {
-    if(i.equipmentType && gymEquipmentCreators[i.equipmentType]) {
-      // Recreate gym equipment
-      const {group, name:eName, w, d, h} = gymEquipmentCreators[i.equipmentType]();
+    if(i.equipmentType && gymBillboardInfo[i.equipmentType]) {
+      // Recreate gym equipment as billboard
+      const result = createGymBillboard(i.equipmentType);
+      if(!result) return;
+      const {group, name:eName, w, d, h} = result;
       group.position.set(i.px, 0, i.pz);
       group.rotation.y = i.rotY || 0;
       itemsGroup.add(group);
